@@ -1,7 +1,16 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 import re
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def limpar_linha(linha):
     return re.sub(r'\D', '', linha)
@@ -20,11 +29,11 @@ def home():
     return {"status": "API rodando 🚀"}
 
 @app.post("/analisar")
-def analisar(linha_digitavel: str):
+def analisar(payload: dict):
+    linha_digitavel = payload.get("linha_digitavel", "")
     linha = limpar_linha(linha_digitavel)
-    
     banco = identificar_banco(linha)
-    
+
     return {
         "banco": banco,
         "linha": linha

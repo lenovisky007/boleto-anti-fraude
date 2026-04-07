@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Validador de Boletos</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #0f172a;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .box {
+      background: #1e293b;
+      padding: 30px;
+      border-radius: 12px;
+      width: 400px;
+      text-align: center;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 8px;
+      border: none;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px;
+      width: 100%;
+      border: none;
+      border-radius: 8px;
+      background: #22c55e;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .result {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="box">
+  <h2>Validador de Boleto</h2>
+
+  <input id="linha" placeholder="Cole a linha digitável aqui" />
+
+  <button onclick="analisar()">Analisar</button>
+
+  <div class="result" id="resultado"></div>
+</div>
+
+<script>
+async function analisar() {
+  const linha = document.getElementById("linha").value;
+
+  const res = await fetch("https://boleto-anti-fraude-production.up.railway.app/analisar", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      linha_digitavel: linha
+    })
+  });
+
+  const data = await res.json();
+
+  document.getElementById("resultado").innerHTML = `
+    <p><b>Banco:</b> ${data.banco}</p>
+    <p><b>Linha:</b> ${data.linha}</p>
+  `;
+}
+</script>
+
+</body>
+</html>
