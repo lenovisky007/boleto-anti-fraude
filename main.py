@@ -1,120 +1,166 @@
-        app,
-        h11_max_incomplete_event_size=h11_max_incomplete_event_size,
-        ^^^^
-             ~~~~^^
-    ...<47 lines>...
-  File "/app/.venv/lib/python3.13/site-packages/click/core.py", line 1485, in __call__
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    return self.main(*args, **kwargs)
+from fastapi import FastAPI, HTTPException, Depends, Header
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+from sqlalchemy import extract
+from datetime import datetime
+import re
+import os
+
+from database import SessionLocal, engine, Base
+from models import User, AnalysisLog
+from auth import hash_password, verify_password, create_access_token, decode_access_token
+
+app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+Base.metadata.create_all(bind=engine)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+def limpar_linha(linha: str) -> str:
+    return re.sub(r"\D", "", linha)
+
+def identificar_banco(linha: str) -> str:
+    bancos = {
+        "001": "Banco do Brasil",
+        "104": "Caixa",
+        "237": "Bradesco",
+        "341": "Itaú",
+    }
+    return bancos.get(linha[:3], "Desconhecido")
+
+def get_current_user(authorization: str = Header(None), db: Session = Depends(get_db)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token ausente")
+
+    token = authorization.replace("Bearer ", "")
+    payload = decode_access_token(token)
+
+    if not payload:
+        raise HTTPException(status_code=401, detail="Token inválido")
+
+    user_id = payload.get("user_id")
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        raise HTTPException(status_code=401, detail="Usuário não encontrado")
+
+    return user
+
+@app.get("/")
+def home():
+    return {"status": "API rodando 🚀"}
+
+@app.post("/register")
+def register(payload: dict, db: Session = Depends(get_db)):
+    name = payload.get("name")
+    email = payload.get("email")
+    password = payload.get("password")
+
+    if not name or not email or not password:
+        raise HTTPException(status_code=400, detail="Preencha nome, email e senha")
+
+    existing_user = db.query(User).filter(User.email == email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email já cadastrado")
+
+    user = User(
+        name=name,
+        email=email,
+        password_hash=hash_password(password),
+        plan="free",
+        monthly_limit=10
     )
-           ~~~~~~~~~^^^^^^^^^^^^^^^^^
-    ^
-  File "/app/.venv/lib/python3.13/site-packages/click/core.py", line 1406, in main
-    rv = self.invoke(ctx)
-  File "/app/.venv/lib/python3.13/site-packages/click/core.py", line 1269, in invoke
-    return ctx.invoke(self.callback, **ctx.params)
-           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/app/.venv/lib/python3.13/site-packages/click/core.py", line 824, in invoke
-    return callback(*args, **kwargs)
-  File "/app/.venv/lib/python3.13/site-packages/uvicorn/main.py", line 433, in main
-  File "/mise/installs/python/3.13.12/lib/python3.13/asyncio/base_events.py", line 725, in run_until_complete
-  File "/app/.venv/lib/python3.13/site-packages/uvicorn/server.py", line 75, in run
-                      ~~~~~~~~~~~~~~~~~~^^^^^^^^^^
-    return future.result()
-           ~~~~~~~~~~^^^^^^
-           ~~~~~~~~~~~~~^^
-  File "/mise/installs/python/3.13.12/lib/python3.13/asyncio/runners.py", line 118, in run
-  File "/app/.venv/lib/python3.13/site-packages/uvicorn/server.py", line 79, in serve
-  File "/app/.venv/lib/python3.13/site-packages/uvicorn/server.py", line 86, in _serve
-    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
-    await self._serve(sockets)
-    return self._loop.run_until_complete(task)
-  File "/mise/installs/python/3.13.12/lib/python3.13/asyncio/runners.py", line 195, in run
-    config.load()
-    server.run()
-    ~~~~~~~~~~~^^
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
-    return runner.run(main)
-    ~~~~~~~~~~^^
-  File "/app/.venv/lib/python3.13/site-packages/uvicorn/config.py", line 441, in load
-    self.loaded_app = import_from_string(self.app)
-    def register(...):
-  File "/app/.venv/lib/python3.13/site-packages/uvicorn/importer.py", line 19, in import_from_string
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-    module = importlib.import_module(module_str)
-                 ^^^
-  File "<frozen importlib._bootstrap_external>", line 1019, in exec_module
-  File "/mise/installs/python/3.13.12/lib/python3.13/importlib/__init__.py", line 88, in import_module
-SyntaxError: invalid syntax
-  File "<frozen importlib._bootstrap_external>", line 1157, in get_code
-    return _bootstrap._gcd_import(name[level:], package, level)
-  File "<frozen importlib._bootstrap_external>", line 1087, in source_to_code
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "/app/main.py", line 7
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-    ...<47 lines>...
-  File "/app/.venv/lib/python3.13/site-packages/click/core.py", line 1406, in main
-        h11_max_incomplete_event_size=h11_max_incomplete_event_size,
-    rv = self.invoke(ctx)
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/app/.venv/lib/python3.13/site-packages/click/core.py", line 1269, in invoke
-Traceback (most recent call last):
-    )
-    return ctx.invoke(self.callback, **ctx.params)
-    run(
-    ^
-  File "/app/.venv/bin/uvicorn", line 7, in <module>
-           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ~~~^
-    sys.exit(main())
-  File "/app/.venv/lib/python3.13/site-packages/click/core.py", line 824, in invoke
-             ~~~~^^
-    return callback(*args, **kwargs)
-        app,
-  File "/app/.venv/lib/python3.13/site-packages/click/core.py", line 1485, in __call__
-  File "/app/.venv/lib/python3.13/site-packages/uvicorn/main.py", line 433, in main
-        ^^^^
-    return self.main(*args, **kwargs)
-           ~~~~~~~~~^^^^^^^^^^^^^^^^^
-    ~~~~~~~~~~~^^
-    return future.result()
-  File "/app/.venv/lib/python3.13/site-packages/uvicorn/config.py", line 441, in load
-    server.run()
-           ~~~~~~~~~~~~~^^
-  File "/app/.venv/lib/python3.13/site-packages/uvicorn/main.py", line 606, in run
-    self.loaded_app = import_from_string(self.app)
-    ~~~~~~~~~~^^
-    return runner.run(main)
-  File "/app/.venv/lib/python3.13/site-packages/uvicorn/server.py", line 79, in serve
-  File "/app/.venv/lib/python3.13/site-packages/uvicorn/server.py", line 75, in run
-           ~~~~~~~~~~^^^^^^
-    await self._serve(sockets)
-    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
-  File "/mise/installs/python/3.13.12/lib/python3.13/asyncio/runners.py", line 118, in run
-  File "/mise/installs/python/3.13.12/lib/python3.13/asyncio/runners.py", line 195, in run
-    return self._loop.run_until_complete(task)
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
-  File "/app/.venv/lib/python3.13/site-packages/uvicorn/server.py", line 86, in _serve
-  File "/mise/installs/python/3.13.12/lib/python3.13/asyncio/base_events.py", line 725, in run_until_complete
-    config.load()
-                      ~~~~~~~~~~~~~~~~~~^^^^^^^^^^
-  File "/app/.venv/lib/python3.13/site-packages/uvicorn/importer.py", line 19, in import_from_string
-    module = importlib.import_module(module_str)
-  File "/mise/installs/python/3.13.12/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1019, in exec_module
-  File "<frozen importlib._bootstrap_external>", line 1157, in get_code
-  File "<frozen importlib._bootstrap_external>", line 1087, in source_to_code
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/app/main.py", line 7
-    def register(...):
-                 ^^^
-SyntaxError: invalid syntax
+
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return {"message": "Usuário criado com sucesso"}
+
+@app.post("/login")
+def login(payload: dict, db: Session = Depends(get_db)):
+    email = payload.get("email")
+    password = payload.get("password")
+
+    user = db.query(User).filter(User.email == email).first()
+
+    if not user or not verify_password(password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Credenciais inválidas")
+
+    token = create_access_token({"user_id": user.id})
+
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "plan": user.plan,
+            "monthly_limit": user.monthly_limit
+        }
+    }
+
+@app.get("/me")
+def me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    current_month = datetime.utcnow().month
+    current_year = datetime.utcnow().year
+
+    used = db.query(AnalysisLog).filter(
+        AnalysisLog.user_id == current_user.id,
+        extract("month", AnalysisLog.created_at) == current_month,
+        extract("year", AnalysisLog.created_at) == current_year
+    ).count()
+
+    return {
+        "id": current_user.id,
+        "name": current_user.name,
+        "email": current_user.email,
+        "plan": current_user.plan,
+        "monthly_limit": current_user.monthly_limit,
+        "used_this_month": used,
+        "remaining": max(current_user.monthly_limit - used, 0)
+    }
+
+@app.post("/analisar")
+def analisar(payload: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    current_month = datetime.utcnow().month
+    current_year = datetime.utcnow().year
+
+    used = db.query(AnalysisLog).filter(
+        AnalysisLog.user_id == current_user.id,
+        extract("month", AnalysisLog.created_at) == current_month,
+        extract("year", AnalysisLog.created_at) == current_year
+    ).count()
+
+    if used >= current_user.monthly_limit:
+        raise HTTPException(status_code=403, detail="Limite mensal atingido")
+
+    linha_digitavel = payload.get("linha_digitavel", "")
+    linha = limpar_linha(linha_digitavel)
+    banco = identificar_banco(linha)
+
+    log = AnalysisLog(user_id=current_user.id)
+    db.add(log)
+    db.commit()
+
+    return {
+        "banco": banco,
+        "linha": linha,
+        "plan": current_user.plan,
+        "used_this_month": used + 1,
+        "remaining": max(current_user.monthly_limit - (used + 1), 0)
+    }
