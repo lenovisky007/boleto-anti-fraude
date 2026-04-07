@@ -3,6 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 import re
 
 app = FastAPI()
+@app.post("/register")
+def register(...):
+
+@app.post("/login")
+def login(...):
+
+@app.get("/me")
+def me(...):
 
 app.add_middleware(
     CORSMiddleware,
