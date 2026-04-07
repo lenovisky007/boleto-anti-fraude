@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -12,6 +12,8 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     plan = Column(String, default="free")
     monthly_limit = Column(Integer, default=10)
+    is_admin = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
 
 class AnalysisLog(Base):
     __tablename__ = "analysis_logs"
