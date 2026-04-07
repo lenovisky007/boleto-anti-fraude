@@ -287,3 +287,24 @@ def admin_toggle_user_status(payload: dict, admin_user: User = Depends(get_admin
     db.commit()
 
     return {"message": "Status do usuário atualizado com sucesso"}
+import os
+@app.post("/bootstrap-admin")
+def bootstrap_admin(payload: dict, db: Session = Depends(get_db)):
+    secret = payload.get("secret")
+    email = payload.get("email")
+
+    expected_secret = os.getenv("BOOTSTRAP_ADMIN_SECRET")
+
+    if not expected_secret or secret != expected_secret:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    user = db.query(User).filter(User.email == email).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    user.is_admin = True
+    user.is_active = True
+    db.commit()
+
+    return {"message": f"{email} agora é admin"}
