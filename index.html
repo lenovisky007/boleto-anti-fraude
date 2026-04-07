@@ -133,3 +133,13 @@
   </script>
 </body>
 </html>
+const res = await fetch("https://boleto-anti-fraude-production.up.railway.app/analisar", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "x-api-key": "meu_super_token_123456_abc_seguro"
+  },
+  body: JSON.stringify({
+    linha_digitavel: linha
+  })
+});

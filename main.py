@@ -38,3 +38,22 @@ def analisar(payload: dict):
         "banco": banco,
         "linha": linha
     }
+import os
+
+API_KEY = os.getenv("API_KEY")
+from fastapi import Header, HTTPException
+
+@app.post("/analisar")
+def analisar(payload: dict, x_api_key: str = Header(None)):
+
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    linha_digitavel = payload.get("linha_digitavel", "")
+    linha = limpar_linha(linha_digitavel)
+    banco = identificar_banco(linha)
+
+    return {
+        "banco": banco,
+        "linha": linha
+    }
