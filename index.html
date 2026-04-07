@@ -3,143 +3,361 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Validador de Boleto</title>
+  <title>Boleto Anti-Fraude</title>
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      background: #0f172a;
+      background: #06153a;
       color: white;
+      min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
+      padding: 30px;
     }
 
-    .box {
+    .container {
       width: 100%;
-      max-width: 420px;
-      background: #1e293b;
-      padding: 30px;
-      border-radius: 14px;
-      box-sizing: border-box;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      max-width: 520px;
+      background: #1d2a44;
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    h1 {
+      margin-top: 0;
+      text-align: center;
+      font-size: 32px;
     }
 
     h2 {
+      font-size: 18px;
+      margin-bottom: 12px;
       margin-top: 0;
-      text-align: center;
+    }
+
+    .section {
+      background: #12203b;
+      border-radius: 12px;
+      padding: 18px;
+      margin-top: 18px;
     }
 
     input {
       width: 100%;
       padding: 12px;
-      margin-top: 10px;
-      border-radius: 8px;
       border: none;
-      box-sizing: border-box;
+      border-radius: 8px;
+      margin-top: 10px;
       font-size: 14px;
     }
 
     button {
-      margin-top: 15px;
-      padding: 12px;
       width: 100%;
       border: none;
       border-radius: 8px;
-      background: #22c55e;
+      padding: 12px;
+      margin-top: 12px;
+      background: #28c45c;
       color: white;
+      font-size: 16px;
       font-weight: bold;
-      font-size: 15px;
       cursor: pointer;
     }
 
     button:hover {
-      opacity: 0.95;
+      opacity: 0.96;
     }
 
-    .result {
-      margin-top: 20px;
-      background: #0f172a;
-      padding: 14px;
+    .secondary {
+      background: #2563eb;
+    }
+
+    .danger {
+      background: #dc2626;
+    }
+
+    .result-box {
+      margin-top: 15px;
+      background: #08142f;
       border-radius: 10px;
+      padding: 14px;
       min-height: 70px;
       word-break: break-word;
     }
 
-    .erro {
-      color: #f87171;
+    .muted {
+      color: #cbd5e1;
+      font-size: 14px;
     }
 
     .ok {
       color: #4ade80;
+      font-weight: bold;
+    }
+
+    .error {
+      color: #f87171;
+      font-weight: bold;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .info-line {
+      margin: 8px 0;
+      font-size: 15px;
     }
   </style>
 </head>
 <body>
-  <div class="box">
-    <h2>Validador de Boleto</h2>
+  <div class="container">
+    <h1>Boleto Anti-Fraude</h1>
 
-    <input
-      id="linha"
-      type="text"
-      placeholder="Cole a linha digitável aqui"
-    />
+    <div id="authArea">
+      <div class="section">
+        <h2>Criar conta</h2>
+        <input id="registerName" type="text" placeholder="Seu nome" />
+        <input id="registerEmail" type="email" placeholder="Seu e-mail" />
+        <input id="registerPassword" type="password" placeholder="Sua senha" />
+        <button onclick="register()">Cadastrar</button>
+      </div>
 
-    <button onclick="analisar()">Analisar</button>
+      <div class="section">
+        <h2>Entrar</h2>
+        <input id="loginEmail" type="email" placeholder="Seu e-mail" />
+        <input id="loginPassword" type="password" placeholder="Sua senha" />
+        <button class="secondary" onclick="login()">Login</button>
+      </div>
 
-    <div class="result" id="resultado">Aguardando análise...</div>
+      <div class="result-box" id="authResult">Aguardando ação...</div>
+    </div>
+
+    <div id="appArea" class="hidden">
+      <div class="section">
+        <h2>Minha conta</h2>
+        <div id="meBox" class="result-box">Carregando dados...</div>
+        <button class="danger" onclick="logout()">Sair</button>
+      </div>
+
+      <div class="section">
+        <h2>Analisar boleto</h2>
+        <input id="linha" type="text" placeholder="Cole a linha digitável aqui" />
+        <button onclick="analisar()">Analisar</button>
+        <div id="resultBox" class="result-box">Aguardando análise...</div>
+      </div>
+    </div>
   </div>
 
   <script>
-    async function analisar() {
-      const linha = document.getElementById("linha").value.trim();
-      const resultado = document.getElementById("resultado");
+    const API_URL = "https://boleto-anti-fraude-production.up.railway.app";
 
-      if (!linha) {
-        resultado.innerHTML = '<span class="erro">Digite uma linha digitável.</span>';
+    function getToken() {
+      return localStorage.getItem("token");
+    }
+
+    function setToken(token) {
+      localStorage.setItem("token", token);
+    }
+
+    function removeToken() {
+      localStorage.removeItem("token");
+    }
+
+    function showLoggedOut() {
+      document.getElementById("authArea").classList.remove("hidden");
+      document.getElementById("appArea").classList.add("hidden");
+    }
+
+    function showLoggedIn() {
+      document.getElementById("authArea").classList.add("hidden");
+      document.getElementById("appArea").classList.remove("hidden");
+    }
+
+    async function register() {
+      const name = document.getElementById("registerName").value.trim();
+      const email = document.getElementById("registerEmail").value.trim();
+      const password = document.getElementById("registerPassword").value.trim();
+      const authResult = document.getElementById("authResult");
+
+      if (!name || !email || !password) {
+        authResult.innerHTML = '<span class="error">Preencha nome, e-mail e senha.</span>';
         return;
       }
 
-      resultado.innerHTML = "Analisando...";
+      authResult.innerHTML = "Criando conta...";
 
       try {
-        const res = await fetch("https://boleto-anti-fraude-production.up.railway.app/analisar", {
+        const res = await fetch(`${API_URL}/register`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({
-            linha_digitavel: linha
-          })
+          body: JSON.stringify({ name, email, password })
         });
-
-        if (!res.ok) {
-          throw new Error("Falha ao consultar a API.");
-        }
 
         const data = await res.json();
 
-        resultado.innerHTML = `
-          <div class="ok"><b>Análise concluída</b></div>
-          <p><b>Banco:</b> ${data.banco}</p>
-          <p><b>Linha:</b> ${data.linha}</p>
-        `;
+        if (!res.ok) {
+          throw new Error(data.detail || "Erro ao cadastrar");
+        }
+
+        authResult.innerHTML = `<span class="ok">${data.message}</span>`;
       } catch (error) {
-        console.error(error);
-        resultado.innerHTML = `<span class="erro"><b>Erro:</b> ${error.message}</span>`;
+        authResult.innerHTML = `<span class="error">${error.message}</span>`;
       }
     }
+
+    async function login() {
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value.trim();
+      const authResult = document.getElementById("authResult");
+
+      if (!email || !password) {
+        authResult.innerHTML = '<span class="error">Preencha e-mail e senha.</span>';
+        return;
+      }
+
+      authResult.innerHTML = "Entrando...";
+
+      try {
+        const res = await fetch(`${API_URL}/login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.detail || "Erro no login");
+        }
+
+        setToken(data.access_token);
+        authResult.innerHTML = `<span class="ok">Login realizado com sucesso.</span>`;
+
+        showLoggedIn();
+        await loadMe();
+      } catch (error) {
+        authResult.innerHTML = `<span class="error">${error.message}</span>`;
+      }
+    }
+
+    async function loadMe() {
+      const token = getToken();
+      const meBox = document.getElementById("meBox");
+
+      if (!token) {
+        showLoggedOut();
+        return;
+      }
+
+      meBox.innerHTML = "Carregando dados da conta...";
+
+      try {
+        const res = await fetch(`${API_URL}/me`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.detail || "Erro ao carregar conta");
+        }
+
+        meBox.innerHTML = `
+          <div class="info-line"><b>Nome:</b> ${data.name}</div>
+          <div class="info-line"><b>E-mail:</b> ${data.email}</div>
+          <div class="info-line"><b>Plano:</b> ${data.plan}</div>
+          <div class="info-line"><b>Limite mensal:</b> ${data.monthly_limit}</div>
+          <div class="info-line"><b>Usado no mês:</b> ${data.used_this_month}</div>
+          <div class="info-line"><b>Restante:</b> ${data.remaining}</div>
+        `;
+      } catch (error) {
+        removeToken();
+        showLoggedOut();
+      }
+    }
+
+    async function analisar() {
+      const token = getToken();
+      const linha = document.getElementById("linha").value.trim();
+      const resultBox = document.getElementById("resultBox");
+
+      if (!token) {
+        resultBox.innerHTML = '<span class="error">Você precisa estar logado.</span>';
+        return;
+      }
+
+      if (!linha) {
+        resultBox.innerHTML = '<span class="error">Digite a linha digitável.</span>';
+        return;
+      }
+
+      resultBox.innerHTML = "Analisando boleto...";
+
+      try {
+        const res = await fetch(`${API_URL}/analisar`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ linha_digitavel: linha })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.detail || "Erro ao analisar");
+        }
+
+        resultBox.innerHTML = `
+          <div class="ok">Análise concluída</div>
+          <div class="info-line"><b>Banco:</b> ${data.banco}</div>
+          <div class="info-line"><b>Linha:</b> ${data.linha}</div>
+          <div class="info-line"><b>Plano:</b> ${data.plan}</div>
+          <div class="info-line"><b>Usado no mês:</b> ${data.used_this_month}</div>
+          <div class="info-line"><b>Restante:</b> ${data.remaining}</div>
+        `;
+
+        await loadMe();
+      } catch (error) {
+        resultBox.innerHTML = `<span class="error">${error.message}</span>`;
+      }
+    }
+
+    function logout() {
+      removeToken();
+      showLoggedOut();
+      document.getElementById("authResult").innerHTML = "Sessão encerrada.";
+      document.getElementById("resultBox").innerHTML = "Aguardando análise...";
+    }
+
+    async function init() {
+      const token = getToken();
+
+      if (token) {
+        showLoggedIn();
+        await loadMe();
+      } else {
+        showLoggedOut();
+      }
+    }
+
+    init();
   </script>
 </body>
 </html>
-const res = await fetch("https://boleto-anti-fraude-production.up.railway.app/analisar", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "x-api-key": "meu_super_token_123456_abc_seguro"
-  },
-  body: JSON.stringify({
-    linha_digitavel: linha
-  })
-});
