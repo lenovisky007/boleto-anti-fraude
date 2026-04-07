@@ -1,82 +1,135 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Validador de Boletos</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Validador de Boleto</title>
   <style>
     body {
-      font-family: Arial;
+      margin: 0;
+      font-family: Arial, sans-serif;
       background: #0f172a;
       color: white;
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
+      min-height: 100vh;
     }
+
     .box {
+      width: 100%;
+      max-width: 420px;
       background: #1e293b;
       padding: 30px;
-      border-radius: 12px;
-      width: 400px;
+      border-radius: 14px;
+      box-sizing: border-box;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+
+    h2 {
+      margin-top: 0;
       text-align: center;
     }
+
     input {
       width: 100%;
-      padding: 10px;
+      padding: 12px;
       margin-top: 10px;
       border-radius: 8px;
       border: none;
+      box-sizing: border-box;
+      font-size: 14px;
     }
+
     button {
       margin-top: 15px;
-      padding: 10px;
+      padding: 12px;
       width: 100%;
       border: none;
       border-radius: 8px;
       background: #22c55e;
       color: white;
       font-weight: bold;
+      font-size: 15px;
       cursor: pointer;
     }
+
+    button:hover {
+      opacity: 0.95;
+    }
+
     .result {
       margin-top: 20px;
+      background: #0f172a;
+      padding: 14px;
+      border-radius: 10px;
+      min-height: 70px;
+      word-break: break-word;
+    }
+
+    .erro {
+      color: #f87171;
+    }
+
+    .ok {
+      color: #4ade80;
     }
   </style>
 </head>
 <body>
+  <div class="box">
+    <h2>Validador de Boleto</h2>
 
-<div class="box">
-  <h2>Validador de Boleto</h2>
+    <input
+      id="linha"
+      type="text"
+      placeholder="Cole a linha digitável aqui"
+    />
 
-  <input id="linha" placeholder="Cole a linha digitável aqui" />
+    <button onclick="analisar()">Analisar</button>
 
-  <button onclick="analisar()">Analisar</button>
+    <div class="result" id="resultado">Aguardando análise...</div>
+  </div>
 
-  <div class="result" id="resultado"></div>
-</div>
+  <script>
+    async function analisar() {
+      const linha = document.getElementById("linha").value.trim();
+      const resultado = document.getElementById("resultado");
 
-<script>
-async function analisar() {
-  const linha = document.getElementById("linha").value;
+      if (!linha) {
+        resultado.innerHTML = '<span class="erro">Digite uma linha digitável.</span>';
+        return;
+      }
 
-  const res = await fetch("https://boleto-anti-fraude-production.up.railway.app/analisar", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      linha_digitavel: linha
-    })
-  });
+      resultado.innerHTML = "Analisando...";
 
-  const data = await res.json();
+      try {
+        const res = await fetch("https://boleto-anti-fraude-production.up.railway.app/analisar", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            linha_digitavel: linha
+          })
+        });
 
-  document.getElementById("resultado").innerHTML = `
-    <p><b>Banco:</b> ${data.banco}</p>
-    <p><b>Linha:</b> ${data.linha}</p>
-  `;
-}
-</script>
+        if (!res.ok) {
+          throw new Error("Falha ao consultar a API.");
+        }
 
+        const data = await res.json();
+
+        resultado.innerHTML = `
+          <div class="ok"><b>Análise concluída</b></div>
+          <p><b>Banco:</b> ${data.banco}</p>
+          <p><b>Linha:</b> ${data.linha}</p>
+        `;
+      } catch (error) {
+        console.error(error);
+        resultado.innerHTML = `<span class="erro"><b>Erro:</b> ${error.message}</span>`;
+      }
+    }
+  </script>
 </body>
 </html>

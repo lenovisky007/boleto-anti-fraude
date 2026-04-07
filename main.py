@@ -12,15 +12,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def limpar_linha(linha):
-    return re.sub(r'\D', '', linha)
+def limpar_linha(linha: str) -> str:
+    return re.sub(r"\D", "", linha)
 
-def identificar_banco(linha):
+def identificar_banco(linha: str) -> str:
     bancos = {
         "001": "Banco do Brasil",
+        "104": "Caixa",
         "237": "Bradesco",
         "341": "Itaú",
-        "104": "Caixa"
     }
     return bancos.get(linha[:3], "Desconhecido")
 
