@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Painel Admin</title>
+
+<style>
+body {
+  background: #0f172a;
+  color: white;
+  font-family: Arial;
+  padding: 20px;
+}
+
+h1 {
+  margin-bottom: 20px;
+}
+
+input, button {
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  margin: 5px 0;
+}
+
+button {
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.btn { background: #22c55e; color: white; }
+.btn-danger { background: #ef4444; }
+.btn-blue { background: #3b82f6; }
+
+.card {
+  background: #1e293b;
+  padding: 15px;
+  border-radius: 10px;
+  margin-top: 10px;
+}
+
+.row { margin-bottom: 5px; }
+
+.error { color: #f87171; }
+.success { color: #4ade80; }
+</style>
+
+</head>
+<body>
+
+<h1>Painel Administrativo</h1>
+
+<button class="btn-blue" onclick="voltar()">⬅ Voltar</button>
+
+<hr>
+
+<input id="emailSearch" placeholder="Buscar por email">
+<button class="btn-blue" onclick="buscar()">Buscar</button>
+
+<div id="result"></div>
+
+<hr>
+
+<button class="btn" onclick="listar()">Listar todos usuários</button>
+
+<div id="users"></div>
+
+<script>
+
+const API = "https://boleto-anti-fraude-production.up.railway.app";
+
+function getToken() {
+  return localStorage.getItem("token");
+}
+
+function voltar() {
+  window.location.href = "/";
+}
+
+// 🔥 PROTEÇÃO: se não tiver token, bloqueia
+if (!getToken()) {
+  alert("Você precisa estar logado");
+  window.location.href = "/";
+}
+
+// 🔥 VERIFICA SE É ADMIN
+async function verificarAdmin() {
+  try {
+    const res = await fetch(`${API}/me`, {
+      headers: {
+        Authorization: "Bearer " + getToken()
+      }
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.is_admin) {
+      alert("Acesso restrito ao administrador");
+      localStorage.removeItem("token");
+      window.location.href = "/";
+    }
+
+  } catch (err) {
+    alert("Erro ao validar sessão");
+    window.location.href = "/";
+  }
+}
+
+verificarAdmin();
+
+
+// =========================
+// RENDER
+// =========================
+
+function renderUser(user) {
+  return `
+    <div class="card">
+      <div class="row"><b>Email:</b> ${user.email}</div>
+      <div class="row"><b>Plano:</b> ${user.plan}</div>
+      <div class="row"><b>Limite:</b> ${user.monthly_limit}</div>
+      <div class="row"><b>Usado:</b> ${user.used_this_month}</div>
+      <div class="row"><b>Restante:</b> ${user.remaining}</div>
+      <div class="row"><b>Ativo:</b> ${user.is_active ? "Sim" : "Não"}</div>
+      <div class="row"><b>Admin:</b> ${user.is_admin ? "Sim" : "Não"}</div>
+
+      <input id="limit-${user.email}" placeholder="Novo limite">
+      <input id="plan-${user.email}" placeholder="Novo plano">
+
+      <button class="btn" onclick="alterarPlano('${user.email}')">Atualizar Plano</button>
+      <button class="btn-danger" onclick="bloquear('${user.email}', false)">Bloquear</button>
+      <button class="btn-blue" onclick="bloquear('${user.email}', true)">Ativar</button>
+    </div>
+  `;
+}
+
+
+// =========================
+// LISTAR USUÁRIOS
+// =========================
+
+async function listar() {
+  const container = document.getElementById("users");
+  container.innerHTML = "Carregando usuários...";
+
+  try {
+    const res = await fetch(`${API}/admin/users`, {
+      headers: {
+        Authorization: "Bearer " + getToken()
+      }
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      container.innerHTML = `<div class="error">Erro: ${data.detail}</div>`;
+      return;
+    }
+
+    if (!Array.isArray(data) || data.length === 0) {
+      container.innerHTML = "Nenhum usuário encontrado.";
+      return;
+    }
+
+    container.innerHTML = data.map(renderUser).join("");
+
+  } catch (err) {
+    container.innerHTML = `<div class="error">${err.message}</div>`;
+  }
+}
+
+
+// =========================
+// BUSCAR USUÁRIO
+// =========================
+
+async function buscar() {
+  const email = document.getElementById("emailSearch").value;
+  const result = document.getElementById("result");
+
+  result.innerHTML = "Buscando...";
+
+  try {
+    const res = await fetch(`${API}/admin/user-by-email?email=${encodeURIComponent(email)}`, {
+      headers: {
+        Authorization: "Bearer " + getToken()
+      }
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      result.innerHTML = `<div class="error">${data.detail}</div>`;
+      return;
+    }
+
+    result.innerHTML = renderUser(data);
+
+  } catch (err) {
+    result.innerHTML = `<div class="error">${err.message}</div>`;
+  }
+}
+
+
+// =========================
+// ALTERAR PLANO
+// =========================
+
+async function alterarPlano(email) {
+  const limit = document.getElementById(`limit-${email}`).value;
+  const plan = document.getElementById(`plan-${email}`).value;
+
+  try {
+    const res = await fetch(`${API}/admin/change-plan`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + getToken()
+      },
+      body: JSON.stringify({
+        email,
+        plan,
+        monthly_limit: limit
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.detail);
+      return;
+    }
+
+    alert("Plano atualizado");
+    listar();
+
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+
+// =========================
+// BLOQUEAR / ATIVAR
+// =========================
+
+async function bloquear(email, status) {
+  try {
+    const res = await fetch(`${API}/admin/toggle-user-status`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + getToken()
+      },
+      body: JSON.stringify({
+        email,
+        is_active: status
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.detail);
+      return;
+    }
+
+    alert("Status atualizado");
+    listar();
+
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+</script>
+
+</body>
+</html>

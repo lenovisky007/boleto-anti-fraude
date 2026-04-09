@@ -23,7 +23,7 @@
 
     .container {
       width: 100%;
-      max-width: 520px;
+      max-width: 560px;
       background: #1d2a44;
       border-radius: 16px;
       padding: 28px;
@@ -83,6 +83,10 @@
       background: #dc2626;
     }
 
+    .admin-btn {
+      background: #0ea5e9;
+    }
+
     .result-box {
       margin-top: 15px;
       background: #08142f;
@@ -92,9 +96,10 @@
       word-break: break-word;
     }
 
-    .muted {
-      color: #cbd5e1;
-      font-size: 14px;
+    .info-line {
+      margin: 8px 0;
+      font-size: 15px;
+      line-height: 1.4;
     }
 
     .ok {
@@ -107,13 +112,29 @@
       font-weight: bold;
     }
 
+    .risk-low {
+      color: #4ade80;
+      font-weight: bold;
+    }
+
+    .risk-medium {
+      color: #facc15;
+      font-weight: bold;
+    }
+
+    .risk-high {
+      color: #f87171;
+      font-weight: bold;
+    }
+
     .hidden {
       display: none;
     }
 
-    .info-line {
-      margin: 8px 0;
-      font-size: 15px;
+    .small {
+      font-size: 13px;
+      color: #cbd5e1;
+      margin-top: 6px;
     }
   </style>
 </head>
@@ -144,12 +165,17 @@
       <div class="section">
         <h2>Minha conta</h2>
         <div id="meBox" class="result-box">Carregando dados...</div>
+        <button id="adminBtn" class="admin-btn hidden" onclick="goToAdmin()">Painel Admin</button>
         <button class="danger" onclick="logout()">Sair</button>
       </div>
 
       <div class="section">
         <h2>Analisar boleto</h2>
-        <input id="linha" type="text" placeholder="Cole a linha digitável aqui" />
+        <input id="linha" type="text" placeholder="Cole a linha digitável ou código de barras" />
+        <input id="beneficiario" type="text" placeholder="Beneficiário (opcional, mas recomendado)" />
+        <div class="small">
+          Dica: informar o beneficiário melhora a classificação, especialmente em cobranças governamentais e arrecadação.
+        </div>
         <button onclick="analisar()">Analisar</button>
         <div id="resultBox" class="result-box">Aguardando análise...</div>
       </div>
@@ -174,11 +200,39 @@
     function showLoggedOut() {
       document.getElementById("authArea").classList.remove("hidden");
       document.getElementById("appArea").classList.add("hidden");
+      document.getElementById("adminBtn").classList.add("hidden");
     }
 
     function showLoggedIn() {
       document.getElementById("authArea").classList.add("hidden");
       document.getElementById("appArea").classList.remove("hidden");
+    }
+
+    function goToAdmin() {
+      window.location.href = "/admin.html";
+    }
+
+    function logout() {
+      removeToken();
+      showLoggedOut();
+      document.getElementById("authResult").innerHTML = "Sessão encerrada.";
+      document.getElementById("resultBox").innerHTML = "Aguardando análise...";
+    }
+
+    function formatMoney(value) {
+      if (value === null || value === undefined || isNaN(value)) {
+        return "N/D";
+      }
+      return Number(value).toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL"
+      });
+    }
+
+    function getRiskClass(risk) {
+      if (risk === "baixo") return "risk-low";
+      if (risk === "medio" || risk === "médio" || risk === "medio_baixo") return "risk-medium";
+      return "risk-high";
     }
 
     async function register() {
@@ -281,19 +335,29 @@
           <div class="info-line"><b>Nome:</b> ${data.name}</div>
           <div class="info-line"><b>E-mail:</b> ${data.email}</div>
           <div class="info-line"><b>Plano:</b> ${data.plan}</div>
+          <div class="info-line"><b>Status:</b> ${data.is_admin ? "<span class='ok'>Administrador</span>" : "Usuário"}</div>
+          <div class="info-line"><b>Conta ativa:</b> ${data.is_active ? "Sim" : "Não"}</div>
           <div class="info-line"><b>Limite mensal:</b> ${data.monthly_limit}</div>
           <div class="info-line"><b>Usado no mês:</b> ${data.used_this_month}</div>
           <div class="info-line"><b>Restante:</b> ${data.remaining}</div>
         `;
+
+        if (data.is_admin) {
+          document.getElementById("adminBtn").classList.remove("hidden");
+        } else {
+          document.getElementById("adminBtn").classList.add("hidden");
+        }
       } catch (error) {
         removeToken();
         showLoggedOut();
+        document.getElementById("authResult").innerHTML = `<span class="error">${error.message}</span>`;
       }
     }
 
     async function analisar() {
       const token = getToken();
       const linha = document.getElementById("linha").value.trim();
+      const beneficiario = document.getElementById("beneficiario").value.trim();
       const resultBox = document.getElementById("resultBox");
 
       if (!token) {
@@ -302,7 +366,7 @@
       }
 
       if (!linha) {
-        resultBox.innerHTML = '<span class="error">Digite a linha digitável.</span>';
+        resultBox.innerHTML = '<span class="error">Digite a linha digitável ou código de barras.</span>';
         return;
       }
 
@@ -315,7 +379,10 @@
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`
           },
-          body: JSON.stringify({ linha_digitavel: linha })
+          body: JSON.stringify({
+            linha_digitavel: linha,
+            beneficiario: beneficiario
+          })
         });
 
         const data = await res.json();
@@ -324,26 +391,29 @@
           throw new Error(data.detail || "Erro ao analisar");
         }
 
+        const riskClass = getRiskClass(data.risco);
+
         resultBox.innerHTML = `
           <div class="ok">Análise concluída</div>
-          <div class="info-line"><b>Banco:</b> ${data.banco}</div>
-          <div class="info-line"><b>Linha:</b> ${data.linha}</div>
-          <div class="info-line"><b>Plano:</b> ${data.plan}</div>
-          <div class="info-line"><b>Usado no mês:</b> ${data.used_this_month}</div>
+          <div class="info-line"><b>Tipo:</b> ${data.tipo || "N/D"}</div>
+          <div class="info-line"><b>Banco / Emissor:</b> ${data.banco_nome || data.banco || "N/D"}</div>
+          <div class="info-line"><b>Categoria:</b> ${data.categoria || "N/D"}</div>
+          <div class="info-line"><b>Risco:</b> <span class="${riskClass}">${data.risco || "N/D"}</span></div>
+          <div class="info-line"><b>Score:</b> ${data.score !== undefined ? data.score : "N/D"}</div>
+          <div class="info-line"><b>Mensagem:</b> ${data.mensagem || "N/D"}</div>
+          <div class="info-line"><b>Valor:</b> ${formatMoney(data.valor)}</div>
+          <div class="info-line"><b>Vencimento:</b> ${data.vencimento || "N/D"}</div>
+          <div class="info-line"><b>DV dos campos:</b> ${data.valido_dv_campos ? "Válido" : "Inválido"}</div>
+          <div class="info-line"><b>DV geral:</b> ${data.valido_dv_geral ? "Válido" : "Inválido"}</div>
+          <div class="info-line"><b>Uso no mês:</b> ${data.used_this_month}</div>
           <div class="info-line"><b>Restante:</b> ${data.remaining}</div>
+          <div class="info-line"><b>Observações:</b> ${(data.observacoes && data.observacoes.length) ? data.observacoes.join(" | ") : "Nenhuma observação adicional"}</div>
         `;
 
         await loadMe();
       } catch (error) {
         resultBox.innerHTML = `<span class="error">${error.message}</span>`;
       }
-    }
-
-    function logout() {
-      removeToken();
-      showLoggedOut();
-      document.getElementById("authResult").innerHTML = "Sessão encerrada.";
-      document.getElementById("resultBox").innerHTML = "Aguardando análise...";
     }
 
     async function init() {

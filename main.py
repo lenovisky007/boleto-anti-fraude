@@ -1,3 +1,4 @@
+from risk import analyze_boleto
 from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -176,16 +177,16 @@ def analisar(payload: dict, current_user: User = Depends(get_current_user), db: 
         raise HTTPException(status_code=403, detail="Limite mensal atingido")
 
     linha_digitavel = payload.get("linha_digitavel", "")
-    linha = limpar_linha(linha_digitavel)
-    banco = identificar_banco(linha)
+    beneficiario = payload.get("beneficiario", "")
+
+    analise = analyze_boleto(linha_digitavel, beneficiario=beneficiario)
 
     log = AnalysisLog(user_id=current_user.id)
     db.add(log)
     db.commit()
 
     return {
-        "banco": banco,
-        "linha": linha,
+        **analise,
         "plan": current_user.plan,
         "used_this_month": used + 1,
         "remaining": max(current_user.monthly_limit - (used + 1), 0)
