@@ -23,7 +23,7 @@
 
     .container {
       width: 100%;
-      max-width: 560px;
+      max-width: 600px;
       background: #1d2a44;
       border-radius: 16px;
       padding: 28px;
@@ -49,7 +49,10 @@
       margin-top: 18px;
     }
 
-    input {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="file"] {
       width: 100%;
       padding: 12px;
       border: none;
@@ -85,6 +88,10 @@
 
     .admin-btn {
       background: #0ea5e9;
+    }
+
+    .pdf-btn {
+      background: #7c3aed;
     }
 
     .result-box {
@@ -135,6 +142,12 @@
       font-size: 13px;
       color: #cbd5e1;
       margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    .divider {
+      margin: 18px 0;
+      border-top: 1px solid #24344f;
     }
   </style>
 </head>
@@ -171,12 +184,25 @@
 
       <div class="section">
         <h2>Analisar boleto</h2>
+
         <input id="linha" type="text" placeholder="Cole a linha digitável ou código de barras" />
         <input id="beneficiario" type="text" placeholder="Beneficiário (opcional, mas recomendado)" />
+
         <div class="small">
-          Dica: informar o beneficiário melhora a classificação, especialmente em cobranças governamentais e arrecadação.
+          Dica: informar o beneficiário melhora a análise, especialmente em arrecadação pública e convênios.
         </div>
-        <button onclick="analisar()">Analisar</button>
+
+        <button onclick="analisar()">Analisar por código</button>
+
+        <div class="divider"></div>
+
+        <input id="pdfFile" type="file" accept=".pdf" />
+        <button class="pdf-btn" onclick="analisarPdf()">Analisar PDF</button>
+
+        <div class="small">
+          O sistema tenta primeiro leitura digital do PDF e, se necessário, usa OCR automaticamente.
+        </div>
+
         <div id="resultBox" class="result-box">Aguardando análise...</div>
       </div>
     </div>
@@ -223,6 +249,7 @@
       if (value === null || value === undefined || isNaN(value)) {
         return "N/D";
       }
+
       return Number(value).toLocaleString("pt-BR", {
         style: "currency",
         currency: "BRL"
@@ -233,6 +260,30 @@
       if (risk === "baixo") return "risk-low";
       if (risk === "medio" || risk === "médio" || risk === "medio_baixo") return "risk-medium";
       return "risk-high";
+    }
+
+    function renderAnalysisResult(data, originLabel = "Análise concluída") {
+      const riskClass = getRiskClass(data.risco);
+
+      return `
+        <div class="ok">${originLabel}</div>
+        ${data.arquivo ? `<div class="info-line"><b>Arquivo:</b> ${data.arquivo}</div>` : ""}
+        ${data.metodo_extracao ? `<div class="info-line"><b>Método de extração:</b> ${data.metodo_extracao}</div>` : ""}
+        ${data.linha_encontrada_no_pdf ? `<div class="info-line"><b>Linha encontrada:</b> ${data.linha_encontrada_no_pdf}</div>` : ""}
+        <div class="info-line"><b>Tipo:</b> ${data.tipo || "N/D"}</div>
+        <div class="info-line"><b>Banco / Emissor:</b> ${data.banco_nome || data.banco || "N/D"}</div>
+        <div class="info-line"><b>Categoria:</b> ${data.categoria || "N/D"}</div>
+        <div class="info-line"><b>Risco:</b> <span class="${riskClass}">${data.risco || "N/D"}</span></div>
+        <div class="info-line"><b>Score:</b> ${data.score !== undefined ? data.score : "N/D"}</div>
+        <div class="info-line"><b>Mensagem:</b> ${data.mensagem || "N/D"}</div>
+        <div class="info-line"><b>Valor:</b> ${formatMoney(data.valor)}</div>
+        <div class="info-line"><b>Vencimento:</b> ${data.vencimento || "N/D"}</div>
+        <div class="info-line"><b>DV dos campos:</b> ${data.valido_dv_campos ? "Válido" : "Inválido"}</div>
+        <div class="info-line"><b>DV geral:</b> ${data.valido_dv_geral ? "Válido" : "Inválido"}</div>
+        <div class="info-line"><b>Uso no mês:</b> ${data.used_this_month}</div>
+        <div class="info-line"><b>Restante:</b> ${data.remaining}</div>
+        <div class="info-line"><b>Observações:</b> ${(data.observacoes && data.observacoes.length) ? data.observacoes.join(" | ") : "Nenhuma observação adicional"}</div>
+      `;
     }
 
     async function register() {
@@ -391,25 +442,49 @@
           throw new Error(data.detail || "Erro ao analisar");
         }
 
-        const riskClass = getRiskClass(data.risco);
+        resultBox.innerHTML = renderAnalysisResult(data, "Análise concluída");
+        await loadMe();
+      } catch (error) {
+        resultBox.innerHTML = `<span class="error">${error.message}</span>`;
+      }
+    }
 
-        resultBox.innerHTML = `
-          <div class="ok">Análise concluída</div>
-          <div class="info-line"><b>Tipo:</b> ${data.tipo || "N/D"}</div>
-          <div class="info-line"><b>Banco / Emissor:</b> ${data.banco_nome || data.banco || "N/D"}</div>
-          <div class="info-line"><b>Categoria:</b> ${data.categoria || "N/D"}</div>
-          <div class="info-line"><b>Risco:</b> <span class="${riskClass}">${data.risco || "N/D"}</span></div>
-          <div class="info-line"><b>Score:</b> ${data.score !== undefined ? data.score : "N/D"}</div>
-          <div class="info-line"><b>Mensagem:</b> ${data.mensagem || "N/D"}</div>
-          <div class="info-line"><b>Valor:</b> ${formatMoney(data.valor)}</div>
-          <div class="info-line"><b>Vencimento:</b> ${data.vencimento || "N/D"}</div>
-          <div class="info-line"><b>DV dos campos:</b> ${data.valido_dv_campos ? "Válido" : "Inválido"}</div>
-          <div class="info-line"><b>DV geral:</b> ${data.valido_dv_geral ? "Válido" : "Inválido"}</div>
-          <div class="info-line"><b>Uso no mês:</b> ${data.used_this_month}</div>
-          <div class="info-line"><b>Restante:</b> ${data.remaining}</div>
-          <div class="info-line"><b>Observações:</b> ${(data.observacoes && data.observacoes.length) ? data.observacoes.join(" | ") : "Nenhuma observação adicional"}</div>
-        `;
+    async function analisarPdf() {
+      const token = getToken();
+      const fileInput = document.getElementById("pdfFile");
+      const resultBox = document.getElementById("resultBox");
 
+      if (!token) {
+        resultBox.innerHTML = '<span class="error">Você precisa estar logado.</span>';
+        return;
+      }
+
+      if (!fileInput.files || !fileInput.files[0]) {
+        resultBox.innerHTML = '<span class="error">Selecione um arquivo PDF.</span>';
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+
+      resultBox.innerHTML = "Lendo PDF e analisando boleto...";
+
+      try {
+        const res = await fetch(`${API_URL}/analisar-pdf`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.detail || "Erro ao analisar PDF");
+        }
+
+        resultBox.innerHTML = renderAnalysisResult(data, "Análise do PDF concluída");
         await loadMe();
       } catch (error) {
         resultBox.innerHTML = `<span class="error">${error.message}</span>`;

@@ -1,16 +1,22 @@
-from risk import analyze_boleto
-from fastapi import FastAPI, HTTPException, Depends, Header
+from datetime import datetime
+from typing import Optional
+import os
+import re
+
+from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import extract
-from datetime import datetime
-import re
 
 from database import SessionLocal, engine, Base
 from models import User, AnalysisLog
 from auth import hash_password, verify_password, create_access_token, decode_access_token
+from risk import analyze_boleto
+from pdf_parser import extract_boleto_from_pdf
 
-app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,6 +29,46 @@ app.add_middleware(
 Base.metadata.create_all(bind=engine)
 
 
+# ============================================================
+# MODELOS DE REQUEST
+# ============================================================
+
+class RegisterRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class AnalyzeRequest(BaseModel):
+    linha_digitavel: str
+    beneficiario: Optional[str] = ""
+
+
+class AdminChangePlanRequest(BaseModel):
+    email: str
+    plan: str
+    monthly_limit: int
+
+
+class AdminToggleUserStatusRequest(BaseModel):
+    email: str
+    is_active: bool
+
+
+class BootstrapAdminRequest(BaseModel):
+    email: str
+    secret: str
+
+
+# ============================================================
+# HELPERS
+# ============================================================
+
 def get_db():
     db = SessionLocal()
     try:
@@ -32,30 +78,56 @@ def get_db():
 
 
 def limpar_linha(linha: str) -> str:
-    return re.sub(r"\D", "", linha)
+    return re.sub(r"\D", "", linha or "")
 
 
 def identificar_banco(linha: str) -> str:
     bancos = {
         "001": "Banco do Brasil",
-        "104": "Caixa",
+        "033": "Santander",
+        "077": "Banco Inter",
+        "104": "Caixa Econômica Federal",
+        "121": "Agibank",
+        "197": "Stone",
+        "208": "BTG Pactual",
+        "212": "Banco Original",
+        "218": "Banco BS2",
         "237": "Bradesco",
+        "260": "Nu Pagamentos / Nubank",
+        "290": "PagBank / PagSeguro",
+        "323": "Mercado Pago",
+        "336": "C6 Bank",
         "341": "Itaú",
+        "380": "PicPay",
+        "422": "Safra",
+        "461": "Asaas",
+        "654": "Banco Digimais",
+        "735": "Neon",
+        "748": "Sicredi",
+        "756": "Sicoob",
     }
-    return bancos.get(linha[:3], "Desconhecido")
+
+    codigo = linha[:3] if linha else ""
+    return bancos.get(codigo, "Desconhecido")
 
 
-def get_current_user(authorization: str = Header(None), db: Session = Depends(get_db)):
+def get_current_user(
+    authorization: str = Header(None),
+    db: Session = Depends(get_db)
+):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Token ausente")
 
-    token = authorization.replace("Bearer ", "")
+    token = authorization.replace("Bearer ", "").strip()
     payload = decode_access_token(token)
 
     if not payload:
         raise HTTPException(status_code=401, detail="Token inválido")
 
     user_id = payload.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Token inválido")
+
     user = db.query(User).filter(User.id == user_id).first()
 
     if not user:
@@ -70,28 +142,38 @@ def get_admin_user(current_user: User = Depends(get_current_user)):
     return current_user
 
 
+def get_current_month_usage(db: Session, user_id: int) -> int:
+    current_month = datetime.utcnow().month
+    current_year = datetime.utcnow().year
+
+    used = db.query(AnalysisLog).filter(
+        AnalysisLog.user_id == user_id,
+        extract("month", AnalysisLog.created_at) == current_month,
+        extract("year", AnalysisLog.created_at) == current_year
+    ).count()
+
+    return used
+
+
+# ============================================================
+# ROTAS PÚBLICAS / AUTH
+# ============================================================
+
 @app.get("/")
 def home():
     return {"status": "API rodando 🚀"}
 
 
 @app.post("/register")
-def register(payload: dict, db: Session = Depends(get_db)):
-    name = payload.get("name")
-    email = payload.get("email")
-    password = payload.get("password")
-
-    if not name or not email or not password:
-        raise HTTPException(status_code=400, detail="Preencha nome, email e senha")
-
-    existing_user = db.query(User).filter(User.email == email).first()
+def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+    existing_user = db.query(User).filter(User.email == payload.email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email já cadastrado")
 
     user = User(
-        name=name,
-        email=email,
-        password_hash=hash_password(password),
+        name=payload.name,
+        email=payload.email,
+        password_hash=hash_password(payload.password),
         plan="free",
         monthly_limit=10,
         is_admin=False,
@@ -106,9 +188,9 @@ def register(payload: dict, db: Session = Depends(get_db)):
 
 
 @app.post("/login")
-def login(payload: dict, db: Session = Depends(get_db)):
-    email = payload.get("email")
-    password = payload.get("password")
+def login(payload: LoginRequest, db: Session = Depends(get_db)):
+    email = payload.email
+    password = payload.password
 
     user = db.query(User).filter(User.email == email).first()
 
@@ -137,14 +219,7 @@ def login(payload: dict, db: Session = Depends(get_db)):
 
 @app.get("/me")
 def me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    current_month = datetime.utcnow().month
-    current_year = datetime.utcnow().year
-
-    used = db.query(AnalysisLog).filter(
-        AnalysisLog.user_id == current_user.id,
-        extract("month", AnalysisLog.created_at) == current_month,
-        extract("year", AnalysisLog.created_at) == current_year
-    ).count()
+    used = get_current_month_usage(db, current_user.id)
 
     return {
         "id": current_user.id,
@@ -159,25 +234,22 @@ def me(current_user: User = Depends(get_current_user), db: Session = Depends(get
     }
 
 
+# ============================================================
+# ANÁLISE DE BOLETO
+# ============================================================
+
 @app.post("/analisar")
-def analisar(payload: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def analisar(payload: AnalyzeRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not current_user.is_active:
         raise HTTPException(status_code=403, detail="Conta desativada")
 
-    current_month = datetime.utcnow().month
-    current_year = datetime.utcnow().year
-
-    used = db.query(AnalysisLog).filter(
-        AnalysisLog.user_id == current_user.id,
-        extract("month", AnalysisLog.created_at) == current_month,
-        extract("year", AnalysisLog.created_at) == current_year
-    ).count()
+    used = get_current_month_usage(db, current_user.id)
 
     if used >= current_user.monthly_limit:
         raise HTTPException(status_code=403, detail="Limite mensal atingido")
 
-    linha_digitavel = payload.get("linha_digitavel", "")
-    beneficiario = payload.get("beneficiario", "")
+    linha_digitavel = limpar_linha(payload.linha_digitavel)
+    beneficiario = payload.beneficiario or ""
 
     analise = analyze_boleto(linha_digitavel, beneficiario=beneficiario)
 
@@ -185,28 +257,75 @@ def analisar(payload: dict, current_user: User = Depends(get_current_user), db: 
     db.add(log)
     db.commit()
 
+    # mantém compatibilidade se algum frontend ainda usa "banco"
+    banco_nome = analise.get("banco_nome") or identificar_banco(linha_digitavel)
+
     return {
         **analise,
+        "banco": banco_nome,
         "plan": current_user.plan,
         "used_this_month": used + 1,
         "remaining": max(current_user.monthly_limit - (used + 1), 0)
     }
 
 
+@app.post("/analisar-pdf")
+def analisar_pdf(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not current_user.is_active:
+        raise HTTPException(status_code=403, detail="Conta desativada")
+
+    used = get_current_month_usage(db, current_user.id)
+
+    if used >= current_user.monthly_limit:
+        raise HTTPException(status_code=403, detail="Limite mensal atingido")
+
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Envie um arquivo PDF válido")
+
+    parsed = extract_boleto_from_pdf(file.file)
+    linha = parsed.get("linha_digitavel")
+
+    if not linha:
+        raise HTTPException(
+            status_code=400,
+            detail="Não foi possível localizar uma linha digitável ou código de barras no PDF"
+        )
+
+    analise = analyze_boleto(linha)
+
+    log = AnalysisLog(user_id=current_user.id)
+    db.add(log)
+    db.commit()
+
+    banco_nome = analise.get("banco_nome") or identificar_banco(linha)
+
+    return {
+        **analise,
+        "banco": banco_nome,
+        "arquivo": file.filename,
+        "metodo_extracao": parsed.get("metodo"),
+        "linha_encontrada_no_pdf": linha,
+        "plan": current_user.plan,
+        "used_this_month": used + 1,
+        "remaining": max(current_user.monthly_limit - (used + 1), 0)
+    }
+
+
+# ============================================================
+# ROTAS ADMIN
+# ============================================================
+
 @app.get("/admin/users")
 def admin_list_users(admin_user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
     users = db.query(User).all()
-
     result = []
-    current_month = datetime.utcnow().month
-    current_year = datetime.utcnow().year
 
     for user in users:
-        used = db.query(AnalysisLog).filter(
-            AnalysisLog.user_id == user.id,
-            extract("month", AnalysisLog.created_at) == current_month,
-            extract("year", AnalysisLog.created_at) == current_year
-        ).count()
+        used = get_current_month_usage(db, user.id)
 
         result.append({
             "id": user.id,
@@ -230,14 +349,7 @@ def admin_get_user_by_email(email: str, admin_user: User = Depends(get_admin_use
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
-    current_month = datetime.utcnow().month
-    current_year = datetime.utcnow().year
-
-    used = db.query(AnalysisLog).filter(
-        AnalysisLog.user_id == user.id,
-        extract("month", AnalysisLog.created_at) == current_month,
-        extract("year", AnalysisLog.created_at) == current_year
-    ).count()
+    used = get_current_month_usage(db, user.id)
 
     return {
         "id": user.id,
@@ -253,53 +365,60 @@ def admin_get_user_by_email(email: str, admin_user: User = Depends(get_admin_use
 
 
 @app.post("/admin/change-plan")
-def admin_change_plan(payload: dict, admin_user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
-    email = payload.get("email")
-    plan = payload.get("plan")
-    monthly_limit = payload.get("monthly_limit")
-
-    user = db.query(User).filter(User.email == email).first()
+def admin_change_plan(payload: AdminChangePlanRequest, admin_user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == payload.email).first()
 
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
-    if not plan or monthly_limit is None:
-        raise HTTPException(status_code=400, detail="Informe plano e limite mensal")
-
-    user.plan = plan
-    user.monthly_limit = int(monthly_limit)
+    user.plan = payload.plan.strip()
+    user.monthly_limit = int(payload.monthly_limit)
 
     db.commit()
+    db.refresh(user)
 
-    return {"message": "Plano atualizado com sucesso"}
+    return {
+        "message": "Plano atualizado com sucesso",
+        "user": {
+            "email": user.email,
+            "plan": user.plan,
+            "monthly_limit": user.monthly_limit
+        }
+    }
 
 
 @app.post("/admin/toggle-user-status")
-def admin_toggle_user_status(payload: dict, admin_user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
-    email = payload.get("email")
-    is_active = payload.get("is_active")
-
-    user = db.query(User).filter(User.email == email).first()
+def admin_toggle_user_status(payload: AdminToggleUserStatusRequest, admin_user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == payload.email).first()
 
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
-    user.is_active = bool(is_active)
+    user.is_active = bool(payload.is_active)
     db.commit()
+    db.refresh(user)
 
-    return {"message": "Status do usuário atualizado com sucesso"}
-import os
+    return {
+        "message": "Status do usuário atualizado com sucesso",
+        "user": {
+            "email": user.email,
+            "is_active": user.is_active
+        }
+    }
+
+
+# ============================================================
+# BOOTSTRAP ADMIN (TEMPORÁRIO)
+# ============================================================
+
 @app.post("/bootstrap-admin")
-def bootstrap_admin(payload: dict, db: Session = Depends(get_db)):
-    secret = payload.get("secret")
-    email = payload.get("email")
+def bootstrap_admin(payload: BootstrapAdminRequest, db: Session = Depends(get_db)):
+    expected_secret = os.getenv("BOOTSTRAP_ADMIN_SECRET", "minha_chave_admin_123456")
 
-    expected_secret = os.getenv("BOOTSTRAP_ADMIN_SECRET")
-
-    if not expected_secret or secret != expected_secret:
+    if payload.secret != expected_secret:
         raise HTTPException(status_code=403, detail="Acesso negado")
 
-    user = db.query(User).filter(User.email == email).first()
+    user = db.query(User).filter(User.email == payload.email).first()
 
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
@@ -307,5 +426,6 @@ def bootstrap_admin(payload: dict, db: Session = Depends(get_db)):
     user.is_admin = True
     user.is_active = True
     db.commit()
+    db.refresh(user)
 
-    return {"message": f"{email} agora é admin"}
+    return {"message": f"{payload.email} agora é admin"}
