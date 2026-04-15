@@ -23,7 +23,7 @@
 
     .container {
       width: 100%;
-      max-width: 600px;
+      max-width: 720px;
       background: #1d2a44;
       border-radius: 16px;
       padding: 28px;
@@ -106,7 +106,7 @@
     .info-line {
       margin: 8px 0;
       font-size: 15px;
-      line-height: 1.4;
+      line-height: 1.45;
     }
 
     .ok {
@@ -149,6 +149,106 @@
       margin: 18px 0;
       border-top: 1px solid #24344f;
     }
+
+    .hint-box {
+      margin-top: 10px;
+      background: #0b1a32;
+      border-left: 4px solid #38bdf8;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 13px;
+      color: #dbeafe;
+      line-height: 1.5;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-left: 8px;
+    }
+
+    .badge-arrecadacao {
+      background: #1d4ed8;
+      color: white;
+    }
+
+    .badge-cobranca {
+      background: #0f766e;
+      color: white;
+    }
+
+    .badge-desconhecido {
+      background: #7f1d1d;
+      color: white;
+    }
+
+    .callout {
+      margin-top: 12px;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .callout-low {
+      background: rgba(34, 197, 94, 0.12);
+      border: 1px solid rgba(34, 197, 94, 0.35);
+      color: #bbf7d0;
+    }
+
+    .callout-medium {
+      background: rgba(250, 204, 21, 0.12);
+      border: 1px solid rgba(250, 204, 21, 0.35);
+      color: #fde68a;
+    }
+
+    .callout-high {
+      background: rgba(248, 113, 113, 0.12);
+      border: 1px solid rgba(248, 113, 113, 0.35);
+      color: #fecaca;
+    }
+
+    .suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .suggestion-chip {
+      background: #1e3a5f;
+      border: 1px solid #355784;
+      color: #dbeafe;
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .suggestion-chip:hover {
+      background: #27466d;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 700px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .subtle {
+      color: #93c5fd;
+      font-size: 13px;
+    }
   </style>
 </head>
 <body>
@@ -186,10 +286,21 @@
         <h2>Analisar boleto</h2>
 
         <input id="linha" type="text" placeholder="Cole a linha digitável ou código de barras" />
-        <input id="beneficiario" type="text" placeholder="Beneficiário (opcional, mas recomendado)" />
+        <input id="beneficiario" type="text" placeholder="Beneficiário (recomendado para contas e arrecadação)" />
 
-        <div class="small">
-          Dica: informar o beneficiário melhora a análise, especialmente em arrecadação pública e convênios.
+        <div class="hint-box">
+          Para contas de água, luz, telefone, gás, prefeitura e guias públicas, informar o beneficiário aumenta bastante a precisão da análise.
+        </div>
+
+        <div class="suggestions">
+          <div class="suggestion-chip" onclick="setBeneficiario('SABESP')">SABESP</div>
+          <div class="suggestion-chip" onclick="setBeneficiario('ENEL')">ENEL</div>
+          <div class="suggestion-chip" onclick="setBeneficiario('VIVO')">VIVO</div>
+          <div class="suggestion-chip" onclick="setBeneficiario('CLARO')">CLARO</div>
+          <div class="suggestion-chip" onclick="setBeneficiario('TIM')">TIM</div>
+          <div class="suggestion-chip" onclick="setBeneficiario('PREFEITURA')">PREFEITURA</div>
+          <div class="suggestion-chip" onclick="setBeneficiario('RECEITA FEDERAL')">RECEITA FEDERAL</div>
+          <div class="suggestion-chip" onclick="setBeneficiario('DETRAN')">DETRAN</div>
         </div>
 
         <button onclick="analisar()">Analisar por código</button>
@@ -221,6 +332,10 @@
 
     function removeToken() {
       localStorage.removeItem("token");
+    }
+
+    function setBeneficiario(value) {
+      document.getElementById("beneficiario").value = value;
     }
 
     function showLoggedOut() {
@@ -262,27 +377,91 @@
       return "risk-high";
     }
 
+    function getRiskCalloutClass(risk) {
+      if (risk === "baixo") return "callout callout-low";
+      if (risk === "medio" || risk === "médio" || risk === "medio_baixo") return "callout callout-medium";
+      return "callout callout-high";
+    }
+
+    function getTipoBadge(tipo) {
+      if (tipo === "arrecadacao") {
+        return `<span class="badge badge-arrecadacao">Arrecadação</span>`;
+      }
+
+      if (tipo === "cobranca_bancaria") {
+        return `<span class="badge badge-cobranca">Cobrança Bancária</span>`;
+      }
+
+      return `<span class="badge badge-desconhecido">Não Reconhecido</span>`;
+    }
+
+    function renderGuidance(data) {
+      const tipo = data.tipo || "";
+      const risco = data.risco || "";
+      const segmento = data.segmento_descricao || "";
+
+      if (tipo === "arrecadacao" && risco === "baixo") {
+        if (segmento) {
+          return `Documento com características compatíveis com arrecadação legítima. Segmento identificado: ${segmento}. Ainda assim, confira o beneficiário antes do pagamento.`;
+        }
+        return "Documento com características compatíveis com arrecadação ou conta do dia a dia. Ainda assim, confira o beneficiário antes de pagar.";
+      }
+
+      if (tipo === "arrecadacao" && risco === "medio") {
+        return "A estrutura parece de arrecadação, mas ainda requer conferência do beneficiário, segmento e contexto da cobrança.";
+      }
+
+      if (tipo === "cobranca_bancaria" && risco === "baixo") {
+        return "Boleto bancário com baixo risco estrutural. Mesmo assim, valide o recebedor e o motivo do pagamento.";
+      }
+
+      if (risco === "alto") {
+        return "A análise encontrou inconsistências ou sinais insuficientes de legitimidade. Evite pagar sem validação manual.";
+      }
+
+      return "Use o resultado como análise de risco, não como garantia absoluta de legitimidade.";
+    }
+
     function renderAnalysisResult(data, originLabel = "Análise concluída") {
       const riskClass = getRiskClass(data.risco);
+      const calloutClass = getRiskCalloutClass(data.risco);
 
       return `
         <div class="ok">${originLabel}</div>
+
         ${data.arquivo ? `<div class="info-line"><b>Arquivo:</b> ${data.arquivo}</div>` : ""}
         ${data.metodo_extracao ? `<div class="info-line"><b>Método de extração:</b> ${data.metodo_extracao}</div>` : ""}
         ${data.linha_encontrada_no_pdf ? `<div class="info-line"><b>Linha encontrada:</b> ${data.linha_encontrada_no_pdf}</div>` : ""}
-        <div class="info-line"><b>Tipo:</b> ${data.tipo || "N/D"}</div>
+
+        <div class="info-line"><b>Tipo:</b> ${data.tipo || "N/D"} ${getTipoBadge(data.tipo)}</div>
         <div class="info-line"><b>Banco / Emissor:</b> ${data.banco_nome || data.banco || "N/D"}</div>
         <div class="info-line"><b>Categoria:</b> ${data.categoria || "N/D"}</div>
         <div class="info-line"><b>Risco:</b> <span class="${riskClass}">${data.risco || "N/D"}</span></div>
         <div class="info-line"><b>Score:</b> ${data.score !== undefined ? data.score : "N/D"}</div>
         <div class="info-line"><b>Mensagem:</b> ${data.mensagem || "N/D"}</div>
-        <div class="info-line"><b>Valor:</b> ${formatMoney(data.valor)}</div>
-        <div class="info-line"><b>Vencimento:</b> ${data.vencimento || "N/D"}</div>
-        <div class="info-line"><b>DV dos campos:</b> ${data.valido_dv_campos ? "Válido" : "Inválido"}</div>
-        <div class="info-line"><b>DV geral:</b> ${data.valido_dv_geral ? "Válido" : "Inválido"}</div>
-        <div class="info-line"><b>Uso no mês:</b> ${data.used_this_month}</div>
-        <div class="info-line"><b>Restante:</b> ${data.remaining}</div>
+
+        <div class="grid-2">
+          <div>
+            <div class="info-line"><b>Valor:</b> ${formatMoney(data.valor)}</div>
+            <div class="info-line"><b>Vencimento:</b> ${data.vencimento || "N/D"}</div>
+            <div class="info-line"><b>DV dos campos:</b> ${data.valido_dv_campos ? "Válido" : "Inválido"}</div>
+            <div class="info-line"><b>DV geral:</b> ${data.valido_dv_geral ? "Válido" : "Inválido"}</div>
+          </div>
+
+          <div>
+            <div class="info-line"><b>Segmento:</b> ${data.segmento || "N/D"}</div>
+            <div class="info-line"><b>Descrição do segmento:</b> ${data.segmento_descricao || "N/D"}</div>
+            <div class="info-line"><b>Código empresa/órgão:</b> ${data.empresa_orgao_codigo || "N/D"}</div>
+            <div class="info-line"><b>Uso no mês:</b> ${data.used_this_month}</div>
+            <div class="info-line"><b>Restante:</b> ${data.remaining}</div>
+          </div>
+        </div>
+
         <div class="info-line"><b>Observações:</b> ${(data.observacoes && data.observacoes.length) ? data.observacoes.join(" | ") : "Nenhuma observação adicional"}</div>
+
+        <div class="${calloutClass}">
+          ${renderGuidance(data)}
+        </div>
       `;
     }
 
