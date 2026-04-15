@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Optional, Dict, Any
+
 from data_loader import (
     KNOWN_LOW_RISK_BENEFICIARIES,
     CONCESSIONARIA_KEYWORDS,
@@ -13,7 +14,7 @@ from data_loader import (
 
 
 # ============================================================
-# BASES DE INSTITUIÇÕES
+# BASES FIXAS DE INSTITUIÇÕES
 # ============================================================
 
 BANCOS_TRADICIONAIS = {
@@ -169,96 +170,6 @@ PSPS_E_GATEWAYS = {
 
 GOV_BANK_HINTS = {"001", "104"}
 
-GOV_BENEFICIARY_KEYWORDS = [
-    "receita federal",
-    "tesouro nacional",
-    "prefeitura",
-    "secretaria da fazenda",
-    "estado de",
-    "município de",
-    "municipio de",
-    "detran",
-    "tribunal",
-    "inss",
-    "fgts",
-    "gru",
-    "simples nacional",
-    "sefaz",
-    "fazenda",
-    "autarquia",
-    "governo",
-    "ministério",
-    "ministerio",
-    "câmara municipal",
-    "camara municipal",
-]
-
-CONCESSIONARIA_KEYWORDS = [
-    "saneamento",
-    "água",
-    "agua",
-    "esgoto",
-    "energia",
-    "elétrica",
-    "eletrica",
-    "distribuidora",
-    "telefonia",
-    "telefone",
-    "telecom",
-    "internet",
-    "fibra",
-    "gás",
-    "gas",
-    "companhia",
-    "concessionária",
-    "concessionaria",
-    "copasa",
-    "sabesp",
-    "sanepar",
-    "caesb",
-    "embasa",
-    "deso",
-    "cosanpa",
-    "equatorial",
-    "enel",
-    "neoenergia",
-    "cemig",
-    "light",
-    "cpfl",
-    "celesc",
-    "amazonas energia",
-    "vivo",
-    "claro",
-    "tim",
-    "oi",
-    "algar",
-    "sercomtel",
-]
-
-KNOWN_LOW_RISK_BENEFICIARIES = [
-    "sabesp",
-    "copasa",
-    "sanepar",
-    "caesb",
-    "embasa",
-    "equatorial",
-    "enel",
-    "neoenergia",
-    "cemig",
-    "light",
-    "cpfl",
-    "vivo",
-    "claro",
-    "tim",
-    "oi",
-    "prefeitura",
-    "receita federal",
-    "tesouro nacional",
-    "detran",
-    "saae",
-    "semasa",
-]
-
 SUSPICIOUS_BENEFICIARY_TERMS = [
     "pagamento rápido",
     "pagamento rapido",
@@ -268,20 +179,6 @@ SUSPICIOUS_BENEFICIARY_TERMS = [
     "beneficiário genérico",
     "beneficiario generico",
 ]
-
-# Heurística inicial para entidades públicas/serviços por código da empresa/órgão
-# Campo de arrecadação: posições 16-19 do barcode (1-based), ou seja [15:19]
-KNOWN_PUBLIC_OR_SERVICE_CODES = {
-    # exemplos genéricos / placeholders para você ir enriquecendo com a sua base
-    "0001": "Possível entidade pública/convênio conhecido",
-    "0002": "Possível concessionária/serviço conhecido",
-    "0003": "Possível arrecadador público",
-}
-
-
-# ============================================================
-# MAPA DE SEGMENTO (HEURÍSTICO)
-# ============================================================
 
 SEGMENTOS_ARRECADACAO = {
     "1": "Prefeituras / Governo / Taxas / Tributos",
@@ -516,7 +413,7 @@ def extrair_segmento_arrecadacao(barcode: str) -> tuple[Optional[str], Optional[
     if len(barcode) != 44 or barcode[0] != "8":
         return None, None
 
-    segmento = barcode[1]  # heurística prática
+    segmento = barcode[1]
     return segmento, SEGMENTOS_ARRECADACAO.get(segmento, "Segmento não mapeado")
 
 
@@ -524,7 +421,6 @@ def extrair_empresa_orgao_codigo(barcode: str) -> Optional[str]:
     if len(barcode) != 44 or barcode[0] != "8":
         return None
 
-    # posição 16-19 no padrão 1-based => [15:19]
     return barcode[15:19]
 
 
@@ -563,25 +459,32 @@ def looks_government_like(beneficiario: Optional[str], banco_codigo: Optional[st
     return False
 
 
-def looks_concessionaria_like(beneficiario: Optional[str]) -> bool:
+def is_known_low_risk_beneficiary(beneficiario: Optional[str], dynamic_beneficiarios: Optional[list[str]] = None) -> bool:
     beneficiario_norm = _normalize_text(beneficiario)
-    return any(k in beneficiario_norm for k in CONCESSIONARIA_KEYWORDS)
+    dynamic_beneficiarios = dynamic_beneficiarios or []
+    all_items = list(KNOWN_LOW_RISK_BENEFICIARIES) + list(dynamic_beneficiarios)
+    return any(k in beneficiario_norm for k in all_items)
 
 
-def is_known_low_risk_beneficiary(beneficiario: Optional[str]) -> bool:
+def looks_concessionaria_like(beneficiario: Optional[str], dynamic_keywords: Optional[list[str]] = None) -> bool:
     beneficiario_norm = _normalize_text(beneficiario)
-    return any(k in beneficiario_norm for k in KNOWN_LOW_RISK_BENEFICIARIES)
+    dynamic_keywords = dynamic_keywords or []
+    all_items = list(CONCESSIONARIA_KEYWORDS) + list(dynamic_keywords)
+    return any(k in beneficiario_norm for k in all_items)
 
 
-def looks_suspicious_beneficiary(beneficiario: Optional[str]) -> bool:
+def looks_suspicious_beneficiary(beneficiario: Optional[str], dynamic_suspicious_terms: Optional[list[str]] = None) -> bool:
     beneficiario_norm = _normalize_text(beneficiario)
-    return any(k in beneficiario_norm for k in SUSPICIOUS_BENEFICIARY_TERMS)
+    dynamic_suspicious_terms = dynamic_suspicious_terms or []
+    all_items = list(SUSPICIOUS_BENEFICIARY_TERMS) + list(dynamic_suspicious_terms)
+    return any(k in beneficiario_norm for k in all_items)
 
 
-def empresa_orgao_parece_confiavel(codigo: Optional[str]) -> bool:
+def empresa_orgao_parece_confiavel(codigo: Optional[str], dynamic_org_codes: Optional[list[str]] = None) -> bool:
     if not codigo:
         return False
-    return codigo in KNOWN_PUBLIC_OR_SERVICE_CODES
+    dynamic_org_codes = dynamic_org_codes or []
+    return codigo in KNOWN_PUBLIC_OR_SERVICE_CODES or codigo in dynamic_org_codes
 
 
 # ============================================================
@@ -596,10 +499,22 @@ def score_to_label(score: int) -> str:
     return "alto"
 
 
-def analyze_boleto(raw_code: str, beneficiario: Optional[str] = None) -> Dict[str, Any]:
+def analyze_boleto(
+    raw_code: str,
+    beneficiario: Optional[str] = None,
+    dynamic_beneficiarios: Optional[list[str]] = None,
+    dynamic_keywords: Optional[list[str]] = None,
+    dynamic_org_codes: Optional[list[str]] = None,
+    dynamic_suspicious_terms: Optional[list[str]] = None
+) -> Dict[str, Any]:
     linha = _only_digits(raw_code)
     beneficiario_norm = _normalize_text(beneficiario)
     observacoes: list[str] = []
+
+    dynamic_beneficiarios = dynamic_beneficiarios or []
+    dynamic_keywords = dynamic_keywords or []
+    dynamic_org_codes = dynamic_org_codes or []
+    dynamic_suspicious_terms = dynamic_suspicious_terms or []
 
     if len(linha) not in {44, 47, 48}:
         return BoletoAnalysis(
@@ -674,16 +589,16 @@ def analyze_boleto(raw_code: str, beneficiario: Optional[str] = None) -> Dict[st
             observacoes.append("Valor zerado. Pode ser legítimo em poucos casos, mas merece revisão.")
 
         if beneficiario_norm:
-            if is_known_low_risk_beneficiary(beneficiario_norm):
+            if is_known_low_risk_beneficiary(beneficiario_norm, dynamic_beneficiarios):
                 score = max(score - 10, 0)
                 observacoes.append("Beneficiário compatível com entidade conhecida de baixo risco.")
             elif looks_government_like(beneficiario_norm, banco_codigo, tipo):
                 score = max(score - 8, 0)
                 observacoes.append("Beneficiário sugere ente governamental.")
-            elif looks_concessionaria_like(beneficiario_norm):
+            elif looks_concessionaria_like(beneficiario_norm, dynamic_keywords):
                 score = max(score - 8, 0)
                 observacoes.append("Beneficiário sugere concessionária/serviço essencial.")
-            elif looks_suspicious_beneficiary(beneficiario_norm):
+            elif looks_suspicious_beneficiary(beneficiario_norm, dynamic_suspicious_terms):
                 score += 20
                 observacoes.append("Beneficiário contém termos incomuns ou suspeitos.")
         else:
@@ -761,7 +676,7 @@ def analyze_boleto(raw_code: str, beneficiario: Optional[str] = None) -> Dict[st
 
         if empresa_orgao_codigo:
             observacoes.append(f"Código empresa/órgão extraído: {empresa_orgao_codigo}.")
-            if empresa_orgao_parece_confiavel(empresa_orgao_codigo):
+            if empresa_orgao_parece_confiavel(empresa_orgao_codigo, dynamic_org_codes):
                 score = max(score - 10, 0)
                 observacoes.append("Código empresa/órgão compatível com base confiável local.")
             else:
@@ -775,13 +690,13 @@ def analyze_boleto(raw_code: str, beneficiario: Optional[str] = None) -> Dict[st
             if looks_government_like(beneficiario_norm, None, tipo):
                 score = max(score - 12, 0)
                 observacoes.append("Beneficiário sugere arrecadação pública/governamental.")
-            elif looks_concessionaria_like(beneficiario_norm):
+            elif looks_concessionaria_like(beneficiario_norm, dynamic_keywords):
                 score = max(score - 12, 0)
                 observacoes.append("Beneficiário sugere concessionária ou serviço essencial.")
-            elif is_known_low_risk_beneficiary(beneficiario_norm):
+            elif is_known_low_risk_beneficiary(beneficiario_norm, dynamic_beneficiarios):
                 score = max(score - 12, 0)
                 observacoes.append("Beneficiário conhecido e compatível com arrecadação legítima.")
-            elif looks_suspicious_beneficiary(beneficiario_norm):
+            elif looks_suspicious_beneficiary(beneficiario_norm, dynamic_suspicious_terms):
                 score += 20
                 observacoes.append("Beneficiário contém termos incomuns ou suspeitos.")
             else:

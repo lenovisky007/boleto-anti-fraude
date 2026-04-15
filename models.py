@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
 
+
 class User(Base):
     __tablename__ = "users"
 
@@ -15,6 +16,7 @@ class User(Base):
     is_admin = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
 
+
 class AnalysisLog(Base):
     __tablename__ = "analysis_logs"
 
@@ -23,3 +25,12 @@ class AnalysisLog(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User")
+
+
+class TrustedEntity(Base):
+    __tablename__ = "trusted_entities"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, index=True)
+    type = Column(String, nullable=False, index=True)  # beneficiario, keyword, org_code, suspicious_term
+    created_at = Column(DateTime, default=datetime.utcnow)

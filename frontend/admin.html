@@ -1,72 +1,176 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Painel Admin</title>
+  <meta charset="UTF-8">
+  <title>Painel Admin</title>
+  <style>
+    body {
+      background: #0f172a;
+      color: white;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      margin: 0;
+    }
 
-<style>
-body {
-  background: #0f172a;
-  color: white;
-  font-family: Arial;
-  padding: 20px;
-}
+    h1, h2 {
+      margin-bottom: 16px;
+    }
 
-h1 {
-  margin-bottom: 20px;
-}
+    input, select, button {
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      margin: 6px 0;
+      font-size: 14px;
+    }
 
-input, button {
-  padding: 10px;
-  border-radius: 6px;
-  border: none;
-  margin: 5px 0;
-}
+    input, select {
+      width: 100%;
+    }
 
-button {
-  cursor: pointer;
-  font-weight: bold;
-}
+    button {
+      cursor: pointer;
+      font-weight: bold;
+    }
 
-.btn { background: #22c55e; color: white; }
-.btn-danger { background: #ef4444; }
-.btn-blue { background: #3b82f6; }
+    .btn {
+      background: #22c55e;
+      color: white;
+    }
 
-.card {
-  background: #1e293b;
-  padding: 15px;
-  border-radius: 10px;
-  margin-top: 10px;
-}
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
 
-.row { margin-bottom: 5px; }
+    .btn-blue {
+      background: #3b82f6;
+      color: white;
+    }
 
-.error { color: #f87171; }
-.success { color: #4ade80; }
-</style>
+    .layout {
+      max-width: 1100px;
+      margin: auto;
+    }
 
+    .card {
+      background: #1e293b;
+      padding: 18px;
+      border-radius: 12px;
+      margin-top: 16px;
+    }
+
+    .row {
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+    }
+
+    .entity-item {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 12px;
+      margin-top: 10px;
+    }
+
+    .small {
+      font-size: 13px;
+      color: #cbd5e1;
+    }
+
+    .error {
+      color: #f87171;
+      font-weight: bold;
+    }
+
+    .success {
+      color: #4ade80;
+      font-weight: bold;
+    }
+
+    @media (max-width: 900px) {
+      .grid, .grid-3 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
+<div class="layout">
+  <h1>Painel Administrativo</h1>
 
-<h1>Painel Administrativo</h1>
+  <button class="btn-blue" onclick="voltar()">⬅ Voltar</button>
 
-<button class="btn-blue" onclick="voltar()">⬅ Voltar</button>
+  <div class="card">
+    <h2>Usuários</h2>
+    <input id="emailSearch" placeholder="Buscar usuário por e-mail">
+    <button class="btn-blue" onclick="buscarUsuario()">Buscar</button>
+    <button class="btn" onclick="listarUsuarios()">Listar todos usuários</button>
+    <div id="userResult"></div>
+    <div id="users"></div>
+  </div>
 
-<hr>
+  <div class="card">
+    <h2>Adicionar entidade confiável / regra</h2>
+    <div class="grid">
+      <div>
+        <input id="entityName" placeholder="Nome ou código">
+      </div>
+      <div>
+        <select id="entityType">
+          <option value="beneficiario">Beneficiário confiável</option>
+          <option value="keyword">Keyword concessionária/serviço</option>
+          <option value="org_code">Código empresa/órgão</option>
+          <option value="suspicious_term">Termo suspeito</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn" onclick="adicionarEntidade()">Adicionar entidade</button>
+    <div id="entityMessage" class="small"></div>
+  </div>
 
-<input id="emailSearch" placeholder="Buscar por email">
-<button class="btn-blue" onclick="buscar()">Buscar</button>
+  <div class="card">
+    <h2>Entidades cadastradas</h2>
 
-<div id="result"></div>
+    <div class="grid-3">
+      <div>
+        <button class="btn-blue" onclick="listarEntidades('beneficiario')">Listar beneficiários</button>
+      </div>
+      <div>
+        <button class="btn-blue" onclick="listarEntidades('keyword')">Listar keywords</button>
+      </div>
+      <div>
+        <button class="btn-blue" onclick="listarEntidades('org_code')">Listar códigos empresa/órgão</button>
+      </div>
+    </div>
 
-<hr>
+    <div class="grid-3">
+      <div>
+        <button class="btn-blue" onclick="listarEntidades('suspicious_term')">Listar termos suspeitos</button>
+      </div>
+      <div>
+        <button class="btn" onclick="listarEntidades()">Listar tudo</button>
+      </div>
+      <div></div>
+    </div>
 
-<button class="btn" onclick="listar()">Listar todos usuários</button>
-
-<div id="users"></div>
+    <div id="entities"></div>
+  </div>
+</div>
 
 <script>
-
 const API = "https://boleto-anti-fraude-production.up.railway.app";
 
 function getToken() {
@@ -77,13 +181,11 @@ function voltar() {
   window.location.href = "/";
 }
 
-// 🔥 PROTEÇÃO: se não tiver token, bloqueia
 if (!getToken()) {
-  alert("Você precisa estar logado");
+  alert("Você precisa estar logado.");
   window.location.href = "/";
 }
 
-// 🔥 VERIFICA SE É ADMIN
 async function verificarAdmin() {
   try {
     const res = await fetch(`${API}/me`, {
@@ -99,7 +201,6 @@ async function verificarAdmin() {
       localStorage.removeItem("token");
       window.location.href = "/";
     }
-
   } catch (err) {
     alert("Erro ao validar sessão");
     window.location.href = "/";
@@ -108,14 +209,10 @@ async function verificarAdmin() {
 
 verificarAdmin();
 
-
-// =========================
-// RENDER
-// =========================
-
 function renderUser(user) {
   return `
-    <div class="card">
+    <div class="entity-item">
+      <div class="row"><b>Nome:</b> ${user.name}</div>
       <div class="row"><b>Email:</b> ${user.email}</div>
       <div class="row"><b>Plano:</b> ${user.plan}</div>
       <div class="row"><b>Limite:</b> ${user.monthly_limit}</div>
@@ -124,22 +221,29 @@ function renderUser(user) {
       <div class="row"><b>Ativo:</b> ${user.is_active ? "Sim" : "Não"}</div>
       <div class="row"><b>Admin:</b> ${user.is_admin ? "Sim" : "Não"}</div>
 
-      <input id="limit-${user.email}" placeholder="Novo limite">
       <input id="plan-${user.email}" placeholder="Novo plano">
+      <input id="limit-${user.email}" placeholder="Novo limite mensal">
 
-      <button class="btn" onclick="alterarPlano('${user.email}')">Atualizar Plano</button>
-      <button class="btn-danger" onclick="bloquear('${user.email}', false)">Bloquear</button>
-      <button class="btn-blue" onclick="bloquear('${user.email}', true)">Ativar</button>
+      <button class="btn" onclick="alterarPlano('${user.email}')">Atualizar plano</button>
+      <button class="btn-danger" onclick="alterarStatus('${user.email}', false)">Bloquear</button>
+      <button class="btn-blue" onclick="alterarStatus('${user.email}', true)">Ativar</button>
     </div>
   `;
 }
 
+function renderEntity(entity) {
+  return `
+    <div class="entity-item">
+      <div class="row"><b>ID:</b> ${entity.id}</div>
+      <div class="row"><b>Nome:</b> ${entity.name}</div>
+      <div class="row"><b>Tipo:</b> ${entity.type}</div>
+      <div class="row"><b>Criado em:</b> ${entity.created_at || "N/D"}</div>
+      <button class="btn-danger" onclick="removerEntidade(${entity.id})">Remover</button>
+    </div>
+  `;
+}
 
-// =========================
-// LISTAR USUÁRIOS
-// =========================
-
-async function listar() {
+async function listarUsuarios() {
   const container = document.getElementById("users");
   container.innerHTML = "Carregando usuários...";
 
@@ -153,7 +257,7 @@ async function listar() {
     const data = await res.json();
 
     if (!res.ok) {
-      container.innerHTML = `<div class="error">Erro: ${data.detail}</div>`;
+      container.innerHTML = `<div class="error">${data.detail || "Erro ao listar usuários"}</div>`;
       return;
     }
 
@@ -163,22 +267,16 @@ async function listar() {
     }
 
     container.innerHTML = data.map(renderUser).join("");
-
   } catch (err) {
     container.innerHTML = `<div class="error">${err.message}</div>`;
   }
 }
 
+async function buscarUsuario() {
+  const email = document.getElementById("emailSearch").value.trim();
+  const result = document.getElementById("userResult");
 
-// =========================
-// BUSCAR USUÁRIO
-// =========================
-
-async function buscar() {
-  const email = document.getElementById("emailSearch").value;
-  const result = document.getElementById("result");
-
-  result.innerHTML = "Buscando...";
+  result.innerHTML = "Buscando usuário...";
 
   try {
     const res = await fetch(`${API}/admin/user-by-email?email=${encodeURIComponent(email)}`, {
@@ -190,25 +288,24 @@ async function buscar() {
     const data = await res.json();
 
     if (!res.ok) {
-      result.innerHTML = `<div class="error">${data.detail}</div>`;
+      result.innerHTML = `<div class="error">${data.detail || "Erro ao buscar usuário"}</div>`;
       return;
     }
 
     result.innerHTML = renderUser(data);
-
   } catch (err) {
     result.innerHTML = `<div class="error">${err.message}</div>`;
   }
 }
 
-
-// =========================
-// ALTERAR PLANO
-// =========================
-
 async function alterarPlano(email) {
-  const limit = document.getElementById(`limit-${email}`).value;
-  const plan = document.getElementById(`plan-${email}`).value;
+  const plan = document.getElementById(`plan-${email}`).value.trim();
+  const limit = document.getElementById(`limit-${email}`).value.trim();
+
+  if (!plan || !limit) {
+    alert("Preencha plano e limite.");
+    return;
+  }
 
   try {
     const res = await fetch(`${API}/admin/change-plan`, {
@@ -218,33 +315,27 @@ async function alterarPlano(email) {
         Authorization: "Bearer " + getToken()
       },
       body: JSON.stringify({
-        email,
-        plan,
-        monthly_limit: limit
+        email: email,
+        plan: plan,
+        monthly_limit: Number(limit)
       })
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      alert(data.detail);
+      alert(data.detail || "Erro ao atualizar plano");
       return;
     }
 
-    alert("Plano atualizado");
-    listar();
-
+    alert("Plano atualizado com sucesso");
+    await listarUsuarios();
   } catch (err) {
     alert(err.message);
   }
 }
 
-
-// =========================
-// BLOQUEAR / ATIVAR
-// =========================
-
-async function bloquear(email, status) {
+async function alterarStatus(email, isActive) {
   try {
     const res = await fetch(`${API}/admin/toggle-user-status`, {
       method: "POST",
@@ -253,27 +344,122 @@ async function bloquear(email, status) {
         Authorization: "Bearer " + getToken()
       },
       body: JSON.stringify({
-        email,
-        is_active: status
+        email: email,
+        is_active: isActive
       })
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      alert(data.detail);
+      alert(data.detail || "Erro ao atualizar status");
       return;
     }
 
-    alert("Status atualizado");
-    listar();
-
+    alert("Status atualizado com sucesso");
+    await listarUsuarios();
   } catch (err) {
     alert(err.message);
   }
 }
 
-</script>
+async function adicionarEntidade() {
+  const name = document.getElementById("entityName").value.trim();
+  const type = document.getElementById("entityType").value;
+  const box = document.getElementById("entityMessage");
 
+  if (!name) {
+    box.innerHTML = `<span class="error">Informe um nome ou código.</span>`;
+    return;
+  }
+
+  box.innerHTML = "Adicionando entidade...";
+
+  try {
+    const res = await fetch(`${API}/admin/entities`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + getToken()
+      },
+      body: JSON.stringify({
+        name: name,
+        type: type
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      box.innerHTML = `<span class="error">${data.detail || "Erro ao adicionar entidade"}</span>`;
+      return;
+    }
+
+    box.innerHTML = `<span class="success">Entidade adicionada com sucesso.</span>`;
+    document.getElementById("entityName").value = "";
+    await listarEntidades(type);
+  } catch (err) {
+    box.innerHTML = `<span class="error">${err.message}</span>`;
+  }
+}
+
+async function listarEntidades(type = "") {
+  const container = document.getElementById("entities");
+  container.innerHTML = "Carregando entidades...";
+
+  const url = type ? `${API}/admin/entities?entity_type=${encodeURIComponent(type)}` : `${API}/admin/entities`;
+
+  try {
+    const res = await fetch(url, {
+      headers: {
+        Authorization: "Bearer " + getToken()
+      }
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      container.innerHTML = `<div class="error">${data.detail || "Erro ao listar entidades"}</div>`;
+      return;
+    }
+
+    if (!Array.isArray(data) || data.length === 0) {
+      container.innerHTML = "Nenhuma entidade cadastrada.";
+      return;
+    }
+
+    container.innerHTML = data.map(renderEntity).join("");
+  } catch (err) {
+    container.innerHTML = `<div class="error">${err.message}</div>`;
+  }
+}
+
+async function removerEntidade(id) {
+  if (!confirm("Deseja remover esta entidade?")) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API}/admin/entities/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: "Bearer " + getToken()
+      }
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.detail || "Erro ao remover entidade");
+      return;
+    }
+
+    alert("Entidade removida com sucesso");
+    await listarEntidades();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+</script>
 </body>
 </html>

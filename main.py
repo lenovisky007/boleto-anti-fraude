@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import extract
 
 from database import SessionLocal, engine, Base
-from models import User, AnalysisLog
+from models import User, AnalysisLog, TrustedEntity
 from auth import hash_password, verify_password, create_access_token, decode_access_token
 from risk import analyze_boleto
 from pdf_parser import extract_boleto_from_pdf
@@ -63,6 +63,11 @@ class AdminToggleUserStatusRequest(BaseModel):
 class BootstrapAdminRequest(BaseModel):
     email: str
     secret: str
+
+
+class TrustedEntityCreateRequest(BaseModel):
+    name: str
+    type: str
 
 
 # ============================================================
@@ -153,6 +158,27 @@ def get_current_month_usage(db: Session, user_id: int) -> int:
     ).count()
 
     return used
+
+
+def load_dynamic_entities(db: Session):
+    entities = db.query(TrustedEntity).all()
+
+    beneficiarios = []
+    keywords = []
+    org_codes = []
+    suspicious_terms = []
+
+    for e in entities:
+        if e.type == "beneficiario":
+            beneficiarios.append(e.name)
+        elif e.type == "keyword":
+            keywords.append(e.name)
+        elif e.type == "org_code":
+            org_codes.append(e.name)
+        elif e.type == "suspicious_term":
+            suspicious_terms.append(e.name)
+
+    return beneficiarios, keywords, org_codes, suspicious_terms
 
 
 # ============================================================
@@ -251,13 +277,21 @@ def analisar(payload: AnalyzeRequest, current_user: User = Depends(get_current_u
     linha_digitavel = limpar_linha(payload.linha_digitavel)
     beneficiario = payload.beneficiario or ""
 
-    analise = analyze_boleto(linha_digitavel, beneficiario=beneficiario)
+    dynamic_beneficiarios, dynamic_keywords, dynamic_org_codes, dynamic_suspicious_terms = load_dynamic_entities(db)
+
+    analise = analyze_boleto(
+        linha_digitavel,
+        beneficiario=beneficiario,
+        dynamic_beneficiarios=dynamic_beneficiarios,
+        dynamic_keywords=dynamic_keywords,
+        dynamic_org_codes=dynamic_org_codes,
+        dynamic_suspicious_terms=dynamic_suspicious_terms
+    )
 
     log = AnalysisLog(user_id=current_user.id)
     db.add(log)
     db.commit()
 
-    # mantém compatibilidade se algum frontend ainda usa "banco"
     banco_nome = analise.get("banco_nome") or identificar_banco(linha_digitavel)
 
     return {
@@ -295,7 +329,15 @@ def analisar_pdf(
             detail="Não foi possível localizar uma linha digitável ou código de barras no PDF"
         )
 
-    analise = analyze_boleto(linha)
+    dynamic_beneficiarios, dynamic_keywords, dynamic_org_codes, dynamic_suspicious_terms = load_dynamic_entities(db)
+
+    analise = analyze_boleto(
+        linha,
+        dynamic_beneficiarios=dynamic_beneficiarios,
+        dynamic_keywords=dynamic_keywords,
+        dynamic_org_codes=dynamic_org_codes,
+        dynamic_suspicious_terms=dynamic_suspicious_terms
+    )
 
     log = AnalysisLog(user_id=current_user.id)
     db.add(log)
@@ -316,7 +358,7 @@ def analisar_pdf(
 
 
 # ============================================================
-# ROTAS ADMIN
+# ROTAS ADMIN - USUÁRIOS
 # ============================================================
 
 @app.get("/admin/users")
@@ -405,6 +447,95 @@ def admin_toggle_user_status(payload: AdminToggleUserStatusRequest, admin_user: 
             "is_active": user.is_active
         }
     }
+
+
+# ============================================================
+# ROTAS ADMIN - ENTIDADES CONFIÁVEIS / REGRAS
+# ============================================================
+
+@app.get("/admin/entities")
+def admin_list_entities(
+    entity_type: Optional[str] = None,
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    query = db.query(TrustedEntity)
+
+    if entity_type:
+        query = query.filter(TrustedEntity.type == entity_type)
+
+    entities = query.order_by(TrustedEntity.id.desc()).all()
+
+    return [
+        {
+            "id": e.id,
+            "name": e.name,
+            "type": e.type,
+            "created_at": e.created_at.isoformat() if e.created_at else None
+        }
+        for e in entities
+    ]
+
+
+@app.post("/admin/entities")
+def admin_add_entity(
+    payload: TrustedEntityCreateRequest,
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    allowed_types = {"beneficiario", "keyword", "org_code", "suspicious_term"}
+
+    entity_type = payload.type.strip().lower()
+    name = payload.name.strip().lower()
+
+    if entity_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Tipo inválido")
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Nome inválido")
+
+    existing = db.query(TrustedEntity).filter(
+        TrustedEntity.name == name,
+        TrustedEntity.type == entity_type
+    ).first()
+
+    if existing:
+        raise HTTPException(status_code=400, detail="Entidade já cadastrada")
+
+    entity = TrustedEntity(
+        name=name,
+        type=entity_type
+    )
+
+    db.add(entity)
+    db.commit()
+    db.refresh(entity)
+
+    return {
+        "message": "Entidade adicionada com sucesso",
+        "entity": {
+            "id": entity.id,
+            "name": entity.name,
+            "type": entity.type
+        }
+    }
+
+
+@app.delete("/admin/entities/{entity_id}")
+def admin_delete_entity(
+    entity_id: int,
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    entity = db.query(TrustedEntity).filter(TrustedEntity.id == entity_id).first()
+
+    if not entity:
+        raise HTTPException(status_code=404, detail="Entidade não encontrada")
+
+    db.delete(entity)
+    db.commit()
+
+    return {"message": "Entidade removida com sucesso"}
 
 
 # ============================================================
