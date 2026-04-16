@@ -94,6 +94,10 @@
       background: #7c3aed;
     }
 
+    .report-btn {
+      background: #0f766e;
+    }
+
     .result-box {
       margin-top: 15px;
       background: #08142f;
@@ -239,15 +243,23 @@
       gap: 12px;
     }
 
+    .report-actions {
+      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .report-note {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #cbd5e1;
+    }
+
     @media (max-width: 700px) {
       .grid-2 {
         grid-template-columns: 1fr;
       }
-    }
-
-    .subtle {
-      color: #93c5fd;
-      font-size: 13px;
     }
   </style>
 </head>
@@ -315,12 +327,23 @@
         </div>
 
         <div id="resultBox" class="result-box">Aguardando análise...</div>
+        <div id="reportArea" class="hidden">
+          <div class="report-actions">
+            <button id="downloadReportBtn" class="report-btn" onclick="baixarRelatorioPdf()">
+              Baixar relatório PDF
+            </button>
+          </div>
+          <div class="report-note">
+            O relatório contém um resumo técnico da análise automatizada de risco.
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
     const API_URL = "https://boleto-anti-fraude-production.up.railway.app";
+    let lastAnalysisId = null;
 
     function getToken() {
       return localStorage.getItem("token");
@@ -342,6 +365,8 @@
       document.getElementById("authArea").classList.remove("hidden");
       document.getElementById("appArea").classList.add("hidden");
       document.getElementById("adminBtn").classList.add("hidden");
+      document.getElementById("reportArea").classList.add("hidden");
+      lastAnalysisId = null;
     }
 
     function showLoggedIn() {
@@ -463,6 +488,52 @@
           ${renderGuidance(data)}
         </div>
       `;
+    }
+
+    function mostrarBotaoRelatorio(analysisId) {
+      if (!analysisId) {
+        document.getElementById("reportArea").classList.add("hidden");
+        lastAnalysisId = null;
+        return;
+      }
+
+      lastAnalysisId = analysisId;
+      document.getElementById("reportArea").classList.remove("hidden");
+    }
+
+    function baixarRelatorioPdf() {
+      const token = getToken();
+
+      if (!token || !lastAnalysisId) {
+        alert("Nenhuma análise disponível para gerar relatório.");
+        return;
+      }
+
+      fetch(`${API_URL}/reports/${lastAnalysisId}/pdf`, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
+      .then(async (res) => {
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.detail || "Erro ao gerar relatório PDF");
+        }
+        return res.blob();
+      })
+      .then((blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `relatorio_analise_${lastAnalysisId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      })
+      .catch((error) => {
+        alert(error.message);
+      });
     }
 
     async function register() {
@@ -600,6 +671,8 @@
         return;
       }
 
+      document.getElementById("reportArea").classList.add("hidden");
+      lastAnalysisId = null;
       resultBox.innerHTML = "Analisando boleto...";
 
       try {
@@ -622,6 +695,7 @@
         }
 
         resultBox.innerHTML = renderAnalysisResult(data, "Análise concluída");
+        mostrarBotaoRelatorio(data.analysis_id);
         await loadMe();
       } catch (error) {
         resultBox.innerHTML = `<span class="error">${error.message}</span>`;
@@ -642,6 +716,9 @@
         resultBox.innerHTML = '<span class="error">Selecione um arquivo PDF.</span>';
         return;
       }
+
+      document.getElementById("reportArea").classList.add("hidden");
+      lastAnalysisId = null;
 
       const formData = new FormData();
       formData.append("file", fileInput.files[0]);
@@ -664,6 +741,7 @@
         }
 
         resultBox.innerHTML = renderAnalysisResult(data, "Análise do PDF concluída");
+        mostrarBotaoRelatorio(data.analysis_id);
         await loadMe();
       } catch (error) {
         resultBox.innerHTML = `<span class="error">${error.message}</span>`;

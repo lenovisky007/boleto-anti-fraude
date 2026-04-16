@@ -2,18 +2,21 @@ from datetime import datetime
 from typing import Optional
 import os
 import re
+import json
 
 from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import extract
 
 from database import SessionLocal, engine, Base
-from models import User, AnalysisLog, TrustedEntity
+from models import User, AnalysisLog, TrustedEntity, AnalysisResult
 from auth import hash_password, verify_password, create_access_token, decode_access_token
 from risk import analyze_boleto
 from pdf_parser import extract_boleto_from_pdf
+from pdf_report import generate_analysis_report_pdf
 
 
 app = FastAPI()
@@ -181,6 +184,71 @@ def load_dynamic_entities(db: Session):
     return beneficiarios, keywords, org_codes, suspicious_terms
 
 
+def save_analysis_result(
+    db: Session,
+    user_id: int,
+    source_type: str,
+    linha_digitavel: str,
+    analysis_data: dict,
+    beneficiario: Optional[str] = "",
+    source_file_name: Optional[str] = None,
+    extraction_method: Optional[str] = None
+):
+    analysis = AnalysisResult(
+        user_id=user_id,
+        source_type=source_type,
+        source_file_name=source_file_name,
+        extraction_method=extraction_method,
+        linha_digitavel=linha_digitavel,
+        beneficiario=beneficiario or "",
+        tipo=analysis_data.get("tipo"),
+        banco_nome=analysis_data.get("banco_nome") or analysis_data.get("banco") or "",
+        categoria=analysis_data.get("categoria"),
+        risco=analysis_data.get("risco"),
+        score=analysis_data.get("score"),
+        valor=str(analysis_data.get("valor")) if analysis_data.get("valor") is not None else None,
+        vencimento=analysis_data.get("vencimento"),
+        segmento=analysis_data.get("segmento"),
+        segmento_descricao=analysis_data.get("segmento_descricao"),
+        empresa_orgao_codigo=analysis_data.get("empresa_orgao_codigo"),
+        valido_dv_campos=bool(analysis_data.get("valido_dv_campos")),
+        valido_dv_geral=bool(analysis_data.get("valido_dv_geral")),
+        observacoes=json.dumps(analysis_data.get("observacoes", []), ensure_ascii=False)
+    )
+
+    db.add(analysis)
+    db.commit()
+    db.refresh(analysis)
+
+    return analysis
+
+
+def serialize_analysis_result(analysis: AnalysisResult) -> dict:
+    return {
+        "id": analysis.id,
+        "user_id": analysis.user_id,
+        "source_type": analysis.source_type,
+        "source_file_name": analysis.source_file_name,
+        "extraction_method": analysis.extraction_method,
+        "linha_digitavel": analysis.linha_digitavel,
+        "beneficiario": analysis.beneficiario,
+        "tipo": analysis.tipo,
+        "banco_nome": analysis.banco_nome,
+        "categoria": analysis.categoria,
+        "risco": analysis.risco,
+        "score": analysis.score,
+        "valor": analysis.valor,
+        "vencimento": analysis.vencimento,
+        "segmento": analysis.segmento,
+        "segmento_descricao": analysis.segmento_descricao,
+        "empresa_orgao_codigo": analysis.empresa_orgao_codigo,
+        "valido_dv_campos": analysis.valido_dv_campos,
+        "valido_dv_geral": analysis.valido_dv_geral,
+        "observacoes": json.loads(analysis.observacoes) if analysis.observacoes else [],
+        "created_at": analysis.created_at.isoformat() if analysis.created_at else None
+    }
+
+
 # ============================================================
 # ROTAS PÚBLICAS / AUTH
 # ============================================================
@@ -293,10 +361,20 @@ def analisar(payload: AnalyzeRequest, current_user: User = Depends(get_current_u
     db.commit()
 
     banco_nome = analise.get("banco_nome") or identificar_banco(linha_digitavel)
+    analise["banco"] = banco_nome
+
+    analysis_result = save_analysis_result(
+        db=db,
+        user_id=current_user.id,
+        source_type="manual",
+        linha_digitavel=linha_digitavel,
+        analysis_data=analise,
+        beneficiario=beneficiario
+    )
 
     return {
         **analise,
-        "banco": banco_nome,
+        "analysis_id": analysis_result.id,
         "plan": current_user.plan,
         "used_this_month": used + 1,
         "remaining": max(current_user.monthly_limit - (used + 1), 0)
@@ -344,10 +422,22 @@ def analisar_pdf(
     db.commit()
 
     banco_nome = analise.get("banco_nome") or identificar_banco(linha)
+    analise["banco"] = banco_nome
+
+    analysis_result = save_analysis_result(
+        db=db,
+        user_id=current_user.id,
+        source_type="pdf",
+        linha_digitavel=linha,
+        analysis_data=analise,
+        beneficiario="",
+        source_file_name=file.filename,
+        extraction_method=parsed.get("metodo")
+    )
 
     return {
         **analise,
-        "banco": banco_nome,
+        "analysis_id": analysis_result.id,
         "arquivo": file.filename,
         "metodo_extracao": parsed.get("metodo"),
         "linha_encontrada_no_pdf": linha,
@@ -355,6 +445,98 @@ def analisar_pdf(
         "used_this_month": used + 1,
         "remaining": max(current_user.monthly_limit - (used + 1), 0)
     }
+
+
+# ============================================================
+# HISTÓRICO / RESULTADOS
+# ============================================================
+
+@app.get("/analysis/{analysis_id}")
+def get_analysis_by_id(
+    analysis_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    analysis = db.query(AnalysisResult).filter(AnalysisResult.id == analysis_id).first()
+
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Análise não encontrada")
+
+    if analysis.user_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    return serialize_analysis_result(analysis)
+
+
+@app.get("/my-analyses")
+def list_my_analyses(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    analyses = db.query(AnalysisResult).filter(
+        AnalysisResult.user_id == current_user.id
+    ).order_by(AnalysisResult.id.desc()).all()
+
+    return [
+        {
+            "id": a.id,
+            "source_type": a.source_type,
+            "linha_digitavel": a.linha_digitavel,
+            "tipo": a.tipo,
+            "banco_nome": a.banco_nome,
+            "risco": a.risco,
+            "score": a.score,
+            "valor": a.valor,
+            "created_at": a.created_at.isoformat() if a.created_at else None
+        }
+        for a in analyses
+    ]
+
+
+# ============================================================
+# RELATÓRIO PDF
+# ============================================================
+
+@app.get("/reports/{analysis_id}/pdf")
+def get_analysis_pdf_report(
+    analysis_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    analysis = db.query(AnalysisResult).filter(AnalysisResult.id == analysis_id).first()
+
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Análise não encontrada")
+
+    if analysis.user_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    user = db.query(User).filter(User.id == analysis.user_id).first()
+
+    analysis_data = serialize_analysis_result(analysis)
+    user_data = None
+
+    if user:
+        user_data = {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email
+        }
+
+    pdf_buffer = generate_analysis_report_pdf(
+        analysis=analysis_data,
+        user=user_data
+    )
+
+    filename = f"relatorio_analise_{analysis.id}.pdf"
+
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )
 
 
 # ============================================================
