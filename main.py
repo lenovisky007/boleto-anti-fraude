@@ -23,7 +23,11 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # depois troque pelo seu domínio real
+    allow_origins=[
+        "https://scanboletos.netlify.app",
+        "http://127.0.0.1:8000",
+        "http://localhost:8000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -338,51 +342,58 @@ def analisar(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    if not current_user.is_active:
-        raise HTTPException(status_code=403, detail="Conta desativada")
+    try:
+        if not current_user.is_active:
+            raise HTTPException(status_code=403, detail="Conta desativada")
 
-    used = get_current_month_usage(db, current_user.id)
+        used = get_current_month_usage(db, current_user.id)
 
-    if used >= current_user.monthly_limit:
-        raise HTTPException(status_code=403, detail="Limite mensal atingido")
+        if used >= current_user.monthly_limit:
+            raise HTTPException(status_code=403, detail="Limite mensal atingido")
 
-    linha_digitavel = limpar_linha(payload.linha_digitavel)
-    beneficiario = payload.beneficiario or ""
+        linha_digitavel = limpar_linha(payload.linha_digitavel)
+        beneficiario = payload.beneficiario or ""
 
-    dynamic_beneficiarios, dynamic_keywords, dynamic_org_codes, dynamic_suspicious_terms = load_dynamic_entities(db)
+        dynamic_beneficiarios, dynamic_keywords, dynamic_org_codes, dynamic_suspicious_terms = load_dynamic_entities(db)
 
-    analise = analyze_boleto(
-        linha_digitavel,
-        beneficiario=beneficiario,
-        dynamic_beneficiarios=dynamic_beneficiarios,
-        dynamic_keywords=dynamic_keywords,
-        dynamic_org_codes=dynamic_org_codes,
-        dynamic_suspicious_terms=dynamic_suspicious_terms
-    )
+        analise = analyze_boleto(
+            linha_digitavel,
+            beneficiario=beneficiario,
+            dynamic_beneficiarios=dynamic_beneficiarios,
+            dynamic_keywords=dynamic_keywords,
+            dynamic_org_codes=dynamic_org_codes,
+            dynamic_suspicious_terms=dynamic_suspicious_terms
+        )
 
-    log = AnalysisLog(user_id=current_user.id)
-    db.add(log)
-    db.commit()
+        log = AnalysisLog(user_id=current_user.id)
+        db.add(log)
+        db.commit()
 
-    banco_nome = analise.get("banco_nome") or identificar_banco(linha_digitavel)
-    analise["banco"] = banco_nome
+        banco_nome = analise.get("banco_nome") or identificar_banco(linha_digitavel)
+        analise["banco"] = banco_nome
 
-    analysis_result = save_analysis_result(
-        db=db,
-        user_id=current_user.id,
-        source_type="manual",
-        linha_digitavel=linha_digitavel,
-        analysis_data=analise,
-        beneficiario=beneficiario
-    )
+        analysis_result = save_analysis_result(
+            db=db,
+            user_id=current_user.id,
+            source_type="manual",
+            linha_digitavel=linha_digitavel,
+            analysis_data=analise,
+            beneficiario=beneficiario
+        )
 
-    return {
-        **analise,
-        "analysis_id": analysis_result.id,
-        "plan": current_user.plan,
-        "used_this_month": used + 1,
-        "remaining": max(current_user.monthly_limit - (used + 1), 0)
-    }
+        return {
+            **analise,
+            "analysis_id": analysis_result.id,
+            "plan": current_user.plan,
+            "used_this_month": used + 1,
+            "remaining": max(current_user.monthly_limit - (used + 1), 0)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print("ERRO NA ROTA /analisar:", repr(e))
+        raise HTTPException(status_code=500, detail=f"Erro interno ao analisar boleto: {str(e)}")
 
 
 @app.post("/analisar-pdf")
