@@ -9,4 +9,4 @@ pdfplumber
 pymupdf
 pytesseract
 Pillow
-reportlab
+reportlab==4.2.2
