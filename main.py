@@ -333,7 +333,11 @@ def me(current_user: User = Depends(get_current_user), db: Session = Depends(get
 # ============================================================
 
 @app.post("/analisar")
-def analisar(payload: AnalyzeRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def analisar(
+    payload: AnalyzeRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     if not current_user.is_active:
         raise HTTPException(status_code=403, detail="Conta desativada")
 
@@ -544,7 +548,10 @@ def get_analysis_pdf_report(
 # ============================================================
 
 @app.get("/admin/users")
-def admin_list_users(admin_user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def admin_list_users(
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
     users = db.query(User).all()
     result = []
 
@@ -567,7 +574,11 @@ def admin_list_users(admin_user: User = Depends(get_admin_user), db: Session = D
 
 
 @app.get("/admin/user-by-email")
-def admin_get_user_by_email(email: str, admin_user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def admin_get_user_by_email(
+    email: str,
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
     user = db.query(User).filter(User.email == email).first()
 
     if not user:
@@ -589,7 +600,11 @@ def admin_get_user_by_email(email: str, admin_user: User = Depends(get_admin_use
 
 
 @app.post("/admin/change-plan")
-def admin_change_plan(payload: AdminChangePlanRequest, admin_user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def admin_change_plan(
+    payload: AdminChangePlanRequest,
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
     user = db.query(User).filter(User.email == payload.email).first()
 
     if not user:
@@ -612,7 +627,11 @@ def admin_change_plan(payload: AdminChangePlanRequest, admin_user: User = Depend
 
 
 @app.post("/admin/toggle-user-status")
-def admin_toggle_user_status(payload: AdminToggleUserStatusRequest, admin_user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def admin_toggle_user_status(
+    payload: AdminToggleUserStatusRequest,
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
     user = db.query(User).filter(User.email == payload.email).first()
 
     if not user:
