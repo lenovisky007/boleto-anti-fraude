@@ -9,3 +9,4 @@ pdfplumber
 pymupdf
 pytesseract
 Pillow
+reportlab

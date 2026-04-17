@@ -1,98 +1,131 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Painel Admin</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel Administrativo</title>
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      background: #0f172a;
-      color: white;
-      font-family: Arial, sans-serif;
-      padding: 20px;
       margin: 0;
+      font-family: Arial, sans-serif;
+      background: #06153a;
+      color: white;
+      padding: 24px;
     }
 
-    h1, h2 {
-      margin-bottom: 16px;
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
     }
 
-    input, select, button {
-      padding: 10px;
-      border-radius: 8px;
-      border: none;
-      margin: 6px 0;
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    .version {
+      color: #93c5fd;
+      margin-bottom: 20px;
       font-size: 14px;
     }
 
-    input, select {
-      width: 100%;
-    }
-
-    button {
-      cursor: pointer;
-      font-weight: bold;
-    }
-
-    .btn {
-      background: #22c55e;
-      color: white;
-    }
-
-    .btn-danger {
-      background: #ef4444;
-      color: white;
-    }
-
-    .btn-blue {
-      background: #3b82f6;
-      color: white;
-    }
-
-    .layout {
-      max-width: 1100px;
-      margin: auto;
+    .top-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
     }
 
     .card {
-      background: #1e293b;
+      background: #12203b;
+      border-radius: 14px;
       padding: 18px;
-      border-radius: 12px;
-      margin-top: 16px;
+      margin-bottom: 18px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
     }
 
-    .row {
-      margin-bottom: 8px;
-      line-height: 1.5;
+    h2 {
+      margin-top: 0;
+      font-size: 20px;
+      margin-bottom: 14px;
     }
 
-    .grid {
+    .grid-2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      gap: 14px;
     }
 
     .grid-3 {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
-      gap: 16px;
+      gap: 14px;
     }
 
-    .entity-item {
-      background: #0f172a;
-      border: 1px solid #334155;
+    input,
+    select,
+    button {
+      width: 100%;
+      border: none;
       border-radius: 10px;
       padding: 12px;
-      margin-top: 10px;
+      font-size: 14px;
     }
 
-    .small {
-      font-size: 13px;
-      color: #cbd5e1;
+    input,
+    select {
+      background: #f3f4f6;
+      color: #111827;
     }
 
-    .error {
-      color: #f87171;
+    button {
+      cursor: pointer;
+      color: white;
       font-weight: bold;
+    }
+
+    .btn-green {
+      background: #22c55e;
+    }
+
+    .btn-blue {
+      background: #2563eb;
+    }
+
+    .btn-red {
+      background: #dc2626;
+    }
+
+    .btn-cyan {
+      background: #0891b2;
+    }
+
+    .btn-gray {
+      background: #475569;
+    }
+
+    .btn-inline {
+      width: auto;
+      min-width: 140px;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .message-box {
+      margin-top: 12px;
+      background: #08142f;
+      border-radius: 10px;
+      padding: 12px;
+      min-height: 52px;
+      line-height: 1.5;
     }
 
     .success {
@@ -100,366 +133,496 @@
       font-weight: bold;
     }
 
+    .error {
+      color: #f87171;
+      font-weight: bold;
+    }
+
+    .muted {
+      color: #cbd5e1;
+      font-size: 13px;
+    }
+
+    .user-card,
+    .entity-card {
+      background: #08142f;
+      border: 1px solid #22324f;
+      border-radius: 12px;
+      padding: 14px;
+      margin-top: 12px;
+    }
+
+    .user-line,
+    .entity-line {
+      margin: 6px 0;
+      line-height: 1.5;
+    }
+
+    .section-actions {
+      margin-top: 12px;
+    }
+
+    .label {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-left: 8px;
+    }
+
+    .label-admin {
+      background: #14532d;
+      color: #bbf7d0;
+    }
+
+    .label-user {
+      background: #1e3a8a;
+      color: #bfdbfe;
+    }
+
+    .label-active {
+      background: #14532d;
+      color: #bbf7d0;
+    }
+
+    .label-inactive {
+      background: #7f1d1d;
+      color: #fecaca;
+    }
+
+    .divider {
+      height: 1px;
+      background: #24344f;
+      margin: 14px 0;
+    }
+
     @media (max-width: 900px) {
-      .grid, .grid-3 {
+      .grid-2,
+      .grid-3 {
         grid-template-columns: 1fr;
       }
     }
   </style>
 </head>
 <body>
-<div class="layout">
-  <h1>Painel Administrativo</h1>
+  <div class="wrap">
+    <h1>Painel Administrativo</h1>
+    <div class="version">Versão Admin 2.0</div>
 
-  <button class="btn-blue" onclick="voltar()">⬅ Voltar</button>
-
-  <div class="card">
-    <h2>Usuários</h2>
-    <input id="emailSearch" placeholder="Buscar usuário por e-mail">
-    <button class="btn-blue" onclick="buscarUsuario()">Buscar</button>
-    <button class="btn" onclick="listarUsuarios()">Listar todos usuários</button>
-    <div id="userResult"></div>
-    <div id="users"></div>
-  </div>
-
-  <div class="card">
-    <h2>Adicionar entidade confiável / regra</h2>
-    <div class="grid">
-      <div>
-        <input id="entityName" placeholder="Nome ou código">
-      </div>
-      <div>
-        <select id="entityType">
-          <option value="beneficiario">Beneficiário confiável</option>
-          <option value="keyword">Keyword concessionária/serviço</option>
-          <option value="org_code">Código empresa/órgão</option>
-          <option value="suspicious_term">Termo suspeito</option>
-        </select>
-      </div>
-    </div>
-    <button class="btn" onclick="adicionarEntidade()">Adicionar entidade</button>
-    <div id="entityMessage" class="small"></div>
-  </div>
-
-  <div class="card">
-    <h2>Entidades cadastradas</h2>
-
-    <div class="grid-3">
-      <div>
-        <button class="btn-blue" onclick="listarEntidades('beneficiario')">Listar beneficiários</button>
-      </div>
-      <div>
-        <button class="btn-blue" onclick="listarEntidades('keyword')">Listar keywords</button>
-      </div>
-      <div>
-        <button class="btn-blue" onclick="listarEntidades('org_code')">Listar códigos empresa/órgão</button>
-      </div>
+    <div class="top-actions">
+      <button class="btn-blue btn-inline" onclick="voltar()">⬅ Voltar</button>
+      <button class="btn-gray btn-inline" onclick="forcarReloadSemCache()">Atualizar versão</button>
     </div>
 
-    <div class="grid-3">
-      <div>
-        <button class="btn-blue" onclick="listarEntidades('suspicious_term')">Listar termos suspeitos</button>
+    <div class="card">
+      <h2>Usuários</h2>
+
+      <div class="grid-2">
+        <div>
+          <input id="emailSearch" placeholder="Buscar usuário por e-mail" />
+        </div>
+        <div class="row">
+          <button class="btn-blue btn-inline" onclick="buscarUsuario()">Buscar</button>
+          <button class="btn-green btn-inline" onclick="listarUsuarios()">Listar todos usuários</button>
+        </div>
       </div>
-      <div>
-        <button class="btn" onclick="listarEntidades()">Listar tudo</button>
-      </div>
-      <div></div>
+
+      <div id="userMessage" class="message-box">Aguardando ação...</div>
+      <div id="userResult"></div>
+      <div id="usersList"></div>
     </div>
 
-    <div id="entities"></div>
+    <div class="card">
+      <h2>Adicionar entidade antifraude</h2>
+
+      <div class="grid-2">
+        <div>
+          <input id="entityName" placeholder="Nome ou código (ex.: enel, sabesp, 0001)" />
+        </div>
+        <div>
+          <select id="entityType">
+            <option value="beneficiario">Beneficiário confiável</option>
+            <option value="keyword">Keyword concessionária/serviço</option>
+            <option value="org_code">Código empresa/órgão</option>
+            <option value="suspicious_term">Termo suspeito</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-actions row">
+        <button class="btn-green btn-inline" onclick="adicionarEntidade()">Adicionar entidade</button>
+      </div>
+
+      <div class="muted" style="margin-top:10px;">
+        Use beneficiário para nomes confiáveis, keyword para palavras-chave como “enel” ou “sabesp”, org_code para códigos de arrecadação/órgão e suspicious_term para termos suspeitos.
+      </div>
+
+      <div id="entityMessage" class="message-box">Nenhuma ação executada.</div>
+    </div>
+
+    <div class="card">
+      <h2>Entidades cadastradas</h2>
+
+      <div class="grid-3">
+        <button class="btn-cyan" onclick="listarEntidades()">Listar tudo</button>
+        <button class="btn-blue" onclick="listarEntidades('beneficiario')">Beneficiários</button>
+        <button class="btn-blue" onclick="listarEntidades('keyword')">Keywords</button>
+      </div>
+
+      <div class="grid-3" style="margin-top: 12px;">
+        <button class="btn-blue" onclick="listarEntidades('org_code')">Códigos empresa/órgão</button>
+        <button class="btn-blue" onclick="listarEntidades('suspicious_term')">Termos suspeitos</button>
+        <div></div>
+      </div>
+
+      <div id="entitiesMessage" class="message-box">Nenhuma listagem carregada.</div>
+      <div id="entitiesList"></div>
+    </div>
   </div>
-</div>
 
-<script>
-const API = "https://boleto-anti-fraude-production.up.railway.app";
+  <script>
+    const API = "https://boleto-anti-fraude-production.up.railway.app";
 
-function getToken() {
-  return localStorage.getItem("token");
-}
+    function getToken() {
+      return localStorage.getItem("token");
+    }
 
-function voltar() {
-  window.location.href = "/";
-}
-
-if (!getToken()) {
-  alert("Você precisa estar logado.");
-  window.location.href = "/";
-}
-
-async function verificarAdmin() {
-  try {
-    const res = await fetch(`${API}/me`, {
-      headers: {
-        Authorization: "Bearer " + getToken()
-      }
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || !data.is_admin) {
-      alert("Acesso restrito ao administrador");
-      localStorage.removeItem("token");
+    function voltar() {
       window.location.href = "/";
     }
-  } catch (err) {
-    alert("Erro ao validar sessão");
-    window.location.href = "/";
-  }
-}
 
-verificarAdmin();
+    function forcarReloadSemCache() {
+      window.location.href = "/admin.html?v=" + Date.now();
+    }
 
-function renderUser(user) {
-  return `
-    <div class="entity-item">
-      <div class="row"><b>Nome:</b> ${user.name}</div>
-      <div class="row"><b>Email:</b> ${user.email}</div>
-      <div class="row"><b>Plano:</b> ${user.plan}</div>
-      <div class="row"><b>Limite:</b> ${user.monthly_limit}</div>
-      <div class="row"><b>Usado:</b> ${user.used_this_month}</div>
-      <div class="row"><b>Restante:</b> ${user.remaining}</div>
-      <div class="row"><b>Ativo:</b> ${user.is_active ? "Sim" : "Não"}</div>
-      <div class="row"><b>Admin:</b> ${user.is_admin ? "Sim" : "Não"}</div>
+    function setMessage(targetId, text, type = "normal") {
+      const el = document.getElementById(targetId);
+      if (!el) return;
 
-      <input id="plan-${user.email}" placeholder="Novo plano">
-      <input id="limit-${user.email}" placeholder="Novo limite mensal">
-
-      <button class="btn" onclick="alterarPlano('${user.email}')">Atualizar plano</button>
-      <button class="btn-danger" onclick="alterarStatus('${user.email}', false)">Bloquear</button>
-      <button class="btn-blue" onclick="alterarStatus('${user.email}', true)">Ativar</button>
-    </div>
-  `;
-}
-
-function renderEntity(entity) {
-  return `
-    <div class="entity-item">
-      <div class="row"><b>ID:</b> ${entity.id}</div>
-      <div class="row"><b>Nome:</b> ${entity.name}</div>
-      <div class="row"><b>Tipo:</b> ${entity.type}</div>
-      <div class="row"><b>Criado em:</b> ${entity.created_at || "N/D"}</div>
-      <button class="btn-danger" onclick="removerEntidade(${entity.id})">Remover</button>
-    </div>
-  `;
-}
-
-async function listarUsuarios() {
-  const container = document.getElementById("users");
-  container.innerHTML = "Carregando usuários...";
-
-  try {
-    const res = await fetch(`${API}/admin/users`, {
-      headers: {
-        Authorization: "Bearer " + getToken()
+      if (type === "success") {
+        el.innerHTML = `<span class="success">${text}</span>`;
+        return;
       }
-    });
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      container.innerHTML = `<div class="error">${data.detail || "Erro ao listar usuários"}</div>`;
-      return;
-    }
-
-    if (!Array.isArray(data) || data.length === 0) {
-      container.innerHTML = "Nenhum usuário encontrado.";
-      return;
-    }
-
-    container.innerHTML = data.map(renderUser).join("");
-  } catch (err) {
-    container.innerHTML = `<div class="error">${err.message}</div>`;
-  }
-}
-
-async function buscarUsuario() {
-  const email = document.getElementById("emailSearch").value.trim();
-  const result = document.getElementById("userResult");
-
-  result.innerHTML = "Buscando usuário...";
-
-  try {
-    const res = await fetch(`${API}/admin/user-by-email?email=${encodeURIComponent(email)}`, {
-      headers: {
-        Authorization: "Bearer " + getToken()
+      if (type === "error") {
+        el.innerHTML = `<span class="error">${text}</span>`;
+        return;
       }
-    });
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      result.innerHTML = `<div class="error">${data.detail || "Erro ao buscar usuário"}</div>`;
-      return;
+      el.innerHTML = text;
     }
 
-    result.innerHTML = renderUser(data);
-  } catch (err) {
-    result.innerHTML = `<div class="error">${err.message}</div>`;
-  }
-}
-
-async function alterarPlano(email) {
-  const plan = document.getElementById(`plan-${email}`).value.trim();
-  const limit = document.getElementById(`limit-${email}`).value.trim();
-
-  if (!plan || !limit) {
-    alert("Preencha plano e limite.");
-    return;
-  }
-
-  try {
-    const res = await fetch(`${API}/admin/change-plan`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + getToken()
-      },
-      body: JSON.stringify({
-        email: email,
-        plan: plan,
-        monthly_limit: Number(limit)
-      })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert(data.detail || "Erro ao atualizar plano");
-      return;
+    if (!getToken()) {
+      alert("Você precisa estar logado.");
+      window.location.href = "/";
     }
 
-    alert("Plano atualizado com sucesso");
-    await listarUsuarios();
-  } catch (err) {
-    alert(err.message);
-  }
-}
+    async function verificarAdmin() {
+      try {
+        const res = await fetch(`${API}/me`, {
+          headers: {
+            Authorization: "Bearer " + getToken()
+          }
+        });
 
-async function alterarStatus(email, isActive) {
-  try {
-    const res = await fetch(`${API}/admin/toggle-user-status`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + getToken()
-      },
-      body: JSON.stringify({
-        email: email,
-        is_active: isActive
-      })
-    });
+        const data = await res.json();
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert(data.detail || "Erro ao atualizar status");
-      return;
-    }
-
-    alert("Status atualizado com sucesso");
-    await listarUsuarios();
-  } catch (err) {
-    alert(err.message);
-  }
-}
-
-async function adicionarEntidade() {
-  const name = document.getElementById("entityName").value.trim();
-  const type = document.getElementById("entityType").value;
-  const box = document.getElementById("entityMessage");
-
-  if (!name) {
-    box.innerHTML = `<span class="error">Informe um nome ou código.</span>`;
-    return;
-  }
-
-  box.innerHTML = "Adicionando entidade...";
-
-  try {
-    const res = await fetch(`${API}/admin/entities`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + getToken()
-      },
-      body: JSON.stringify({
-        name: name,
-        type: type
-      })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      box.innerHTML = `<span class="error">${data.detail || "Erro ao adicionar entidade"}</span>`;
-      return;
-    }
-
-    box.innerHTML = `<span class="success">Entidade adicionada com sucesso.</span>`;
-    document.getElementById("entityName").value = "";
-    await listarEntidades(type);
-  } catch (err) {
-    box.innerHTML = `<span class="error">${err.message}</span>`;
-  }
-}
-
-async function listarEntidades(type = "") {
-  const container = document.getElementById("entities");
-  container.innerHTML = "Carregando entidades...";
-
-  const url = type ? `${API}/admin/entities?entity_type=${encodeURIComponent(type)}` : `${API}/admin/entities`;
-
-  try {
-    const res = await fetch(url, {
-      headers: {
-        Authorization: "Bearer " + getToken()
+        if (!res.ok || !data.is_admin) {
+          alert("Acesso restrito ao administrador");
+          localStorage.removeItem("token");
+          window.location.href = "/";
+        }
+      } catch (err) {
+        alert("Erro ao validar sessão");
+        window.location.href = "/";
       }
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      container.innerHTML = `<div class="error">${data.detail || "Erro ao listar entidades"}</div>`;
-      return;
     }
 
-    if (!Array.isArray(data) || data.length === 0) {
-      container.innerHTML = "Nenhuma entidade cadastrada.";
-      return;
+    function renderUser(user) {
+      return `
+        <div class="user-card">
+          <div class="user-line"><b>Nome:</b> ${user.name}</div>
+          <div class="user-line"><b>E-mail:</b> ${user.email}</div>
+          <div class="user-line">
+            <b>Status de acesso:</b>
+            ${user.is_admin
+              ? '<span class="label label-admin">Administrador</span>'
+              : '<span class="label label-user">Usuário</span>'}
+            ${user.is_active
+              ? '<span class="label label-active">Ativo</span>'
+              : '<span class="label label-inactive">Bloqueado</span>'}
+          </div>
+          <div class="user-line"><b>Plano:</b> ${user.plan}</div>
+          <div class="user-line"><b>Limite mensal:</b> ${user.monthly_limit}</div>
+          <div class="user-line"><b>Usado no mês:</b> ${user.used_this_month}</div>
+          <div class="user-line"><b>Restante:</b> ${user.remaining}</div>
+
+          <div class="divider"></div>
+
+          <div class="grid-2">
+            <div>
+              <input id="plan-${user.email}" placeholder="Novo plano" />
+            </div>
+            <div>
+              <input id="limit-${user.email}" placeholder="Novo limite mensal" />
+            </div>
+          </div>
+
+          <div class="section-actions row">
+            <button class="btn-green btn-inline" onclick="alterarPlano('${user.email}')">Atualizar plano</button>
+            <button class="btn-red btn-inline" onclick="alterarStatus('${user.email}', false)">Bloquear</button>
+            <button class="btn-blue btn-inline" onclick="alterarStatus('${user.email}', true)">Ativar</button>
+          </div>
+        </div>
+      `;
     }
 
-    container.innerHTML = data.map(renderEntity).join("");
-  } catch (err) {
-    container.innerHTML = `<div class="error">${err.message}</div>`;
-  }
-}
+    function renderEntity(entity) {
+      return `
+        <div class="entity-card">
+          <div class="entity-line"><b>ID:</b> ${entity.id}</div>
+          <div class="entity-line"><b>Nome:</b> ${entity.name}</div>
+          <div class="entity-line"><b>Tipo:</b> ${entity.type}</div>
+          <div class="entity-line"><b>Criado em:</b> ${entity.created_at || "N/D"}</div>
 
-async function removerEntidade(id) {
-  if (!confirm("Deseja remover esta entidade?")) {
-    return;
-  }
+          <div class="section-actions row">
+            <button class="btn-red btn-inline" onclick="removerEntidade(${entity.id})">Remover</button>
+          </div>
+        </div>
+      `;
+    }
 
-  try {
-    const res = await fetch(`${API}/admin/entities/${id}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: "Bearer " + getToken()
+    async function listarUsuarios() {
+      setMessage("userMessage", "Carregando usuários...");
+      document.getElementById("userResult").innerHTML = "";
+
+      try {
+        const res = await fetch(`${API}/admin/users`, {
+          headers: {
+            Authorization: "Bearer " + getToken()
+          }
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          setMessage("userMessage", data.detail || "Erro ao listar usuários", "error");
+          return;
+        }
+
+        if (!Array.isArray(data) || data.length === 0) {
+          setMessage("userMessage", "Nenhum usuário encontrado.");
+          document.getElementById("usersList").innerHTML = "";
+          return;
+        }
+
+        setMessage("userMessage", `Total de usuários carregados: ${data.length}`, "success");
+        document.getElementById("usersList").innerHTML = data.map(renderUser).join("");
+      } catch (err) {
+        setMessage("userMessage", err.message, "error");
       }
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert(data.detail || "Erro ao remover entidade");
-      return;
     }
 
-    alert("Entidade removida com sucesso");
-    await listarEntidades();
-  } catch (err) {
-    alert(err.message);
-  }
-}
-</script>
+    async function buscarUsuario() {
+      const email = document.getElementById("emailSearch").value.trim();
+
+      if (!email) {
+        setMessage("userMessage", "Informe um e-mail para buscar.", "error");
+        return;
+      }
+
+      setMessage("userMessage", "Buscando usuário...");
+      document.getElementById("usersList").innerHTML = "";
+
+      try {
+        const res = await fetch(`${API}/admin/user-by-email?email=${encodeURIComponent(email)}`, {
+          headers: {
+            Authorization: "Bearer " + getToken()
+          }
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          setMessage("userMessage", data.detail || "Erro ao buscar usuário", "error");
+          document.getElementById("userResult").innerHTML = "";
+          return;
+        }
+
+        setMessage("userMessage", "Usuário encontrado.", "success");
+        document.getElementById("userResult").innerHTML = renderUser(data);
+      } catch (err) {
+        setMessage("userMessage", err.message, "error");
+      }
+    }
+
+    async function alterarPlano(email) {
+      const plan = document.getElementById(`plan-${email}`).value.trim();
+      const limit = document.getElementById(`limit-${email}`).value.trim();
+
+      if (!plan || !limit) {
+        alert("Preencha plano e limite.");
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API}/admin/change-plan`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + getToken()
+          },
+          body: JSON.stringify({
+            email: email,
+            plan: plan,
+            monthly_limit: Number(limit)
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.detail || "Erro ao atualizar plano");
+          return;
+        }
+
+        alert("Plano atualizado com sucesso");
+        await listarUsuarios();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function alterarStatus(email, isActive) {
+      try {
+        const res = await fetch(`${API}/admin/toggle-user-status`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + getToken()
+          },
+          body: JSON.stringify({
+            email: email,
+            is_active: isActive
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.detail || "Erro ao atualizar status");
+          return;
+        }
+
+        alert("Status atualizado com sucesso");
+        await listarUsuarios();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function adicionarEntidade() {
+      const name = document.getElementById("entityName").value.trim();
+      const type = document.getElementById("entityType").value;
+
+      if (!name) {
+        setMessage("entityMessage", "Informe um nome ou código.", "error");
+        return;
+      }
+
+      setMessage("entityMessage", "Adicionando entidade...");
+
+      try {
+        const res = await fetch(`${API}/admin/entities`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + getToken()
+          },
+          body: JSON.stringify({
+            name: name,
+            type: type
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          setMessage("entityMessage", data.detail || "Erro ao adicionar entidade", "error");
+          return;
+        }
+
+        setMessage("entityMessage", "Entidade adicionada com sucesso.", "success");
+        document.getElementById("entityName").value = "";
+        await listarEntidades(type);
+      } catch (err) {
+        setMessage("entityMessage", err.message, "error");
+      }
+    }
+
+    async function listarEntidades(type = "") {
+      setMessage("entitiesMessage", "Carregando entidades...");
+
+      const url = type
+        ? `${API}/admin/entities?entity_type=${encodeURIComponent(type)}`
+        : `${API}/admin/entities`;
+
+      try {
+        const res = await fetch(url, {
+          headers: {
+            Authorization: "Bearer " + getToken()
+          }
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          setMessage("entitiesMessage", data.detail || "Erro ao listar entidades", "error");
+          return;
+        }
+
+        if (!Array.isArray(data) || data.length === 0) {
+          setMessage("entitiesMessage", "Nenhuma entidade cadastrada.");
+          document.getElementById("entitiesList").innerHTML = "";
+          return;
+        }
+
+        setMessage("entitiesMessage", `Total de entidades carregadas: ${data.length}`, "success");
+        document.getElementById("entitiesList").innerHTML = data.map(renderEntity).join("");
+      } catch (err) {
+        setMessage("entitiesMessage", err.message, "error");
+      }
+    }
+
+    async function removerEntidade(id) {
+      if (!confirm("Deseja remover esta entidade?")) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API}/admin/entities/${id}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: "Bearer " + getToken()
+          }
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.detail || "Erro ao remover entidade");
+          return;
+        }
+
+        alert("Entidade removida com sucesso");
+        await listarEntidades();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    verificarAdmin();
+  </script>
 </body>
 </html>
