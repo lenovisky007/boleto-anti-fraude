@@ -459,28 +459,40 @@ def looks_government_like(beneficiario: Optional[str], banco_codigo: Optional[st
     return False
 
 
-def is_known_low_risk_beneficiary(beneficiario: Optional[str], dynamic_beneficiarios: Optional[list[str]] = None) -> bool:
+def is_known_low_risk_beneficiary(
+    beneficiario: Optional[str],
+    dynamic_beneficiarios: Optional[list[str]] = None
+) -> bool:
     beneficiario_norm = _normalize_text(beneficiario)
     dynamic_beneficiarios = dynamic_beneficiarios or []
     all_items = list(KNOWN_LOW_RISK_BENEFICIARIES) + list(dynamic_beneficiarios)
     return any(k in beneficiario_norm for k in all_items)
 
 
-def looks_concessionaria_like(beneficiario: Optional[str], dynamic_keywords: Optional[list[str]] = None) -> bool:
+def looks_concessionaria_like(
+    beneficiario: Optional[str],
+    dynamic_keywords: Optional[list[str]] = None
+) -> bool:
     beneficiario_norm = _normalize_text(beneficiario)
     dynamic_keywords = dynamic_keywords or []
     all_items = list(CONCESSIONARIA_KEYWORDS) + list(dynamic_keywords)
     return any(k in beneficiario_norm for k in all_items)
 
 
-def looks_suspicious_beneficiary(beneficiario: Optional[str], dynamic_suspicious_terms: Optional[list[str]] = None) -> bool:
+def looks_suspicious_beneficiary(
+    beneficiario: Optional[str],
+    dynamic_suspicious_terms: Optional[list[str]] = None
+) -> bool:
     beneficiario_norm = _normalize_text(beneficiario)
     dynamic_suspicious_terms = dynamic_suspicious_terms or []
     all_items = list(SUSPICIOUS_BENEFICIARY_TERMS) + list(dynamic_suspicious_terms)
     return any(k in beneficiario_norm for k in all_items)
 
 
-def empresa_orgao_parece_confiavel(codigo: Optional[str], dynamic_org_codes: Optional[list[str]] = None) -> bool:
+def empresa_orgao_parece_confiavel(
+    codigo: Optional[str],
+    dynamic_org_codes: Optional[list[str]] = None
+) -> bool:
     if not codigo:
         return False
     dynamic_org_codes = dynamic_org_codes or []
