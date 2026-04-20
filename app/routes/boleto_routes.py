@@ -1,31 +1,57 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from ..risk import analyze_boleto
+from app.auth import hash_password, verify_password, create_access_token
+from app.database.db import SessionLocal
+from app.models import User
 
-router = APIRouter(prefix="/boleto", tags=["Boleto Antifraude"])
-
-
-# =========================
-# INPUT
-# =========================
-class BoletoRequest(BaseModel):
-    codigo: str
-    beneficiario: str | None = None
+router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
-# =========================
-# ENDPOINT PRINCIPAL
-# =========================
-@router.post("/validar")
-def validar_boleto(data: BoletoRequest):
+class UserCreate(BaseModel):
+    email: str
+    password: str
 
-    resultado = analyze_boleto(
-        raw_code=data.codigo,
-        beneficiario=data.beneficiario
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+
+# 🆕 cadastro
+@router.post("/register")
+def register(data: UserCreate):
+    db = SessionLocal()
+
+    user = db.query(User).filter(User.email == data.email).first()
+
+    if user:
+        raise HTTPException(status_code=400, detail="Usuário já existe")
+
+    new_user = User(
+        email=data.email,
+        password=hash_password(data.password)
     )
 
+    db.add(new_user)
+    db.commit()
+
+    return {"msg": "Usuário criado com sucesso"}
+
+
+# 🔑 login
+@router.post("/login")
+def login(data: UserLogin):
+    db = SessionLocal()
+
+    user = db.query(User).filter(User.email == data.email).first()
+
+    if not user or not verify_password(data.password, user.password):
+        raise HTTPException(status_code=401, detail="Credenciais inválidas")
+
+    token = create_access_token({"sub": user.email})
+
     return {
-        "status": "ok",
-        "analise": resultado
+        "access_token": token,
+        "token_type": "bearer"
     }

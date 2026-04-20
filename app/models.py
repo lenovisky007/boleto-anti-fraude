@@ -1,17 +1,14 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime
-from .database.db import Base
-from datetime import datetime
+from sqlalchemy import Column, Integer, String
+from app.database.db import Base
 
 
-class Boleto(Base):
-    __tablename__ = "boletos"
+class User(Base):
+    __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
-    codigo = Column(String, index=True)
-    beneficiario = Column(String)
+    id = Column(Integer, primary_key=True)
 
-    banco = Column(String)
-    valor = Column(Float)
-    risco = Column(String)
+    email = Column(String, unique=True, index=True)
+    password = Column(String)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    plan = Column(String, default="free")
+    requests_used = Column(Integer, default=0)

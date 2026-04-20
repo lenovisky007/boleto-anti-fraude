@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Dashboard SaaS</title>
+</head>
+<body>
+
+<h1>Dashboard Antifraude</h1>
+
+<input id="token" placeholder="Token JWT">
+
+<br><br>
+
+<textarea id="boleto" placeholder="linha digitável"></textarea>
+
+<button onclick="validar()">Validar</button>
+
+<pre id="resultado"></pre>
+
+<script>
+async function validar() {
+    const token = document.getElementById("token").value;
+    const codigo = document.getElementById("boleto").value;
+
+    const res = await fetch("http://127.0.0.1:8000/validar-boleto", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({ codigo })
+    });
+
+    const data = await res.json();
+    document.getElementById("resultado").innerText =
+        JSON.stringify(data, null, 2);
+}
+</script>
+
+</body>
+</html>
