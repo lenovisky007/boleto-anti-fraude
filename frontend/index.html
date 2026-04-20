@@ -1,765 +1,101 @@
 <!DOCTYPE html>
+
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Boleto Anti-Fraude</title>
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #06153a;
-      color: white;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 30px;
-    }
-
-    .container {
-      width: 100%;
-      max-width: 720px;
-      background: #1d2a44;
-      border-radius: 16px;
-      padding: 28px;
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
-    }
-
-    h1 {
-      margin-top: 0;
-      text-align: center;
-      font-size: 32px;
-    }
-
-    h2 {
-      font-size: 18px;
-      margin-bottom: 12px;
-      margin-top: 0;
-    }
-
-    .section {
-      background: #12203b;
-      border-radius: 12px;
-      padding: 18px;
-      margin-top: 18px;
-    }
-
-    input[type="text"],
-    input[type="email"],
-    input[type="password"],
-    input[type="file"] {
-      width: 100%;
-      padding: 12px;
-      border: none;
-      border-radius: 8px;
-      margin-top: 10px;
-      font-size: 14px;
-    }
-
-    button {
-      width: 100%;
-      border: none;
-      border-radius: 8px;
-      padding: 12px;
-      margin-top: 12px;
-      background: #28c45c;
-      color: white;
-      font-size: 16px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    button:hover {
-      opacity: 0.96;
-    }
-
-    .secondary {
-      background: #2563eb;
-    }
-
-    .danger {
-      background: #dc2626;
-    }
-
-    .admin-btn {
-      background: #0ea5e9;
-    }
-
-    .pdf-btn {
-      background: #7c3aed;
-    }
-
-    .report-btn {
-      background: #0f766e;
-    }
-
-    .result-box {
-      margin-top: 15px;
-      background: #08142f;
-      border-radius: 10px;
-      padding: 14px;
-      min-height: 70px;
-      word-break: break-word;
-    }
-
-    .info-line {
-      margin: 8px 0;
-      font-size: 15px;
-      line-height: 1.45;
-    }
-
-    .ok {
-      color: #4ade80;
-      font-weight: bold;
-    }
-
-    .error {
-      color: #f87171;
-      font-weight: bold;
-    }
-
-    .risk-low {
-      color: #4ade80;
-      font-weight: bold;
-    }
-
-    .risk-medium {
-      color: #facc15;
-      font-weight: bold;
-    }
-
-    .risk-high {
-      color: #f87171;
-      font-weight: bold;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    .small {
-      font-size: 13px;
-      color: #cbd5e1;
-      margin-top: 6px;
-      line-height: 1.4;
-    }
-
-    .divider {
-      margin: 18px 0;
-      border-top: 1px solid #24344f;
-    }
-
-    .hint-box {
-      margin-top: 10px;
-      background: #0b1a32;
-      border-left: 4px solid #38bdf8;
-      border-radius: 8px;
-      padding: 10px 12px;
-      font-size: 13px;
-      color: #dbeafe;
-      line-height: 1.5;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: bold;
-      margin-left: 8px;
-    }
-
-    .badge-arrecadacao {
-      background: #1d4ed8;
-      color: white;
-    }
-
-    .badge-cobranca {
-      background: #0f766e;
-      color: white;
-    }
-
-    .badge-desconhecido {
-      background: #7f1d1d;
-      color: white;
-    }
-
-    .callout {
-      margin-top: 12px;
-      border-radius: 10px;
-      padding: 12px;
-      font-size: 14px;
-      line-height: 1.45;
-    }
-
-    .callout-low {
-      background: rgba(34, 197, 94, 0.12);
-      border: 1px solid rgba(34, 197, 94, 0.35);
-      color: #bbf7d0;
-    }
-
-    .callout-medium {
-      background: rgba(250, 204, 21, 0.12);
-      border: 1px solid rgba(250, 204, 21, 0.35);
-      color: #fde68a;
-    }
-
-    .callout-high {
-      background: rgba(248, 113, 113, 0.12);
-      border: 1px solid rgba(248, 113, 113, 0.35);
-      color: #fecaca;
-    }
-
-    .suggestions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    .suggestion-chip {
-      background: #1e3a5f;
-      border: 1px solid #355784;
-      color: #dbeafe;
-      padding: 8px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .suggestion-chip:hover {
-      background: #27466d;
-    }
-
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    .report-actions {
-      margin-top: 14px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .report-note {
-      margin-top: 10px;
-      font-size: 13px;
-      color: #cbd5e1;
-    }
-
-    @media (max-width: 700px) {
-      .grid-2 {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
+  <meta charset="UTF-8">
+  <title>Sistema</title>
 </head>
-<body>
-  <div class="container">
-    <h1>Boleto Anti-Fraude</h1>
+<body style="font-family: Arial; padding: 20px;">
 
-    <div id="authArea">
-      <div class="section">
-        <h2>Criar conta</h2>
-        <input id="registerName" type="text" placeholder="Seu nome" />
-        <input id="registerEmail" type="email" placeholder="Seu e-mail" />
-        <input id="registerPassword" type="password" placeholder="Sua senha" />
-        <button onclick="register()">Cadastrar</button>
-      </div>
+<h2>Registrar</h2>
+<input id="reg_user" placeholder="Usuário"><br><br>
+<input id="reg_pass" type="password" placeholder="Senha"><br><br>
+<button onclick="register()">Registrar</button>
 
-      <div class="section">
-        <h2>Entrar</h2>
-        <input id="loginEmail" type="email" placeholder="Seu e-mail" />
-        <input id="loginPassword" type="password" placeholder="Sua senha" />
-        <button class="secondary" onclick="login()">Login</button>
-      </div>
+<hr>
 
-      <div class="result-box" id="authResult">Aguardando ação...</div>
-    </div>
+<h2>Login</h2>
+<input id="log_user" placeholder="Usuário"><br><br>
+<input id="log_pass" type="password" placeholder="Senha"><br><br>
+<button onclick="login()">Entrar</button>
 
-    <div id="appArea" class="hidden">
-      <div class="section">
-        <h2>Minha conta</h2>
-        <div id="meBox" class="result-box">Carregando dados...</div>
-        <button id="adminBtn" class="admin-btn hidden" onclick="goToAdmin()">Painel Admin</button>
-        <button class="danger" onclick="logout()">Sair</button>
-      </div>
+<hr>
 
-      <div class="section">
-        <h2>Analisar boleto</h2>
+<h2>Perfil</h2>
+<button onclick="getProfile()">Ver Perfil</button>
 
-        <input id="linha" type="text" placeholder="Cole a linha digitável ou código de barras" />
-        <input id="beneficiario" type="text" placeholder="Beneficiário (recomendado para contas e arrecadação)" />
+<pre id="output" style="background:#eee; padding:10px;"></pre>
 
-        <div class="hint-box">
-          Para contas de água, luz, telefone, gás, prefeitura e guias públicas, informar o beneficiário aumenta bastante a precisão da análise.
-        </div>
+<script>
+const API = "https://boleto-anti-fraude-production.up.railway.app";
 
-        <div class="suggestions">
-          <div class="suggestion-chip" onclick="setBeneficiario('SABESP')">SABESP</div>
-          <div class="suggestion-chip" onclick="setBeneficiario('ENEL')">ENEL</div>
-          <div class="suggestion-chip" onclick="setBeneficiario('VIVO')">VIVO</div>
-          <div class="suggestion-chip" onclick="setBeneficiario('CLARO')">CLARO</div>
-          <div class="suggestion-chip" onclick="setBeneficiario('TIM')">TIM</div>
-          <div class="suggestion-chip" onclick="setBeneficiario('PREFEITURA')">PREFEITURA</div>
-          <div class="suggestion-chip" onclick="setBeneficiario('RECEITA FEDERAL')">RECEITA FEDERAL</div>
-          <div class="suggestion-chip" onclick="setBeneficiario('DETRAN')">DETRAN</div>
-        </div>
+// mostrar resultado bonito
+function show(data) {
+  document.getElementById("output").innerText =
+    JSON.stringify(data, null, 2);
+}
 
-        <button onclick="analisar()">Analisar por código</button>
+// REGISTER
+async function register() {
+  const username = document.getElementById("reg_user").value;
+  const password = document.getElementById("reg_pass").value;
 
-        <div class="divider"></div>
+  const res = await fetch(API + "/register", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ username, password })
+  });
 
-        <input id="pdfFile" type="file" accept=".pdf" />
-        <button class="pdf-btn" onclick="analisarPdf()">Analisar PDF</button>
+  const data = await res.json();
 
-        <div class="small">
-          O sistema tenta primeiro leitura digital do PDF e, se necessário, usa OCR automaticamente.
-        </div>
+  show(data);
 
-        <div id="resultBox" class="result-box">Aguardando análise...</div>
-        <div id="reportArea" class="hidden">
-          <div class="report-actions">
-            <button id="downloadReportBtn" class="report-btn" onclick="baixarRelatorioPdf()">
-              Baixar relatório PDF
-            </button>
-          </div>
-          <div class="report-note">
-            O relatório contém um resumo técnico da análise automatizada de risco.
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  if (res.ok && data.token) {
+    localStorage.setItem("token", data.token);
+  }
+}
 
-  <script>
-    const API_URL = "https://boleto-anti-fraude-production.up.railway.app";
-    let lastAnalysisId = null;
+// LOGIN
+async function login() {
+  const username = document.getElementById("log_user").value;
+  const password = document.getElementById("log_pass").value;
 
-    function getToken() {
-      return localStorage.getItem("token");
+  const res = await fetch(API + "/login", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ username, password })
+  });
+
+  const data = await res.json();
+
+  show(data);
+
+  if (res.ok && data.token) {
+    localStorage.setItem("token", data.token);
+  }
+}
+
+// PERFIL
+async function getProfile() {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    show({ erro: "Faça login primeiro" });
+    return;
+  }
+
+  const res = await fetch(API + "/me", {
+    method: "GET",
+    headers: {
+      "Authorization": "Bearer " + token
     }
+  });
 
-    function setToken(token) {
-      localStorage.setItem("token", token);
-    }
+  const data = await res.json();
 
-    function removeToken() {
-      localStorage.removeItem("token");
-    }
+  show(data);
+}
+</script>
 
-    function setBeneficiario(value) {
-      document.getElementById("beneficiario").value = value;
-    }
-
-    function showLoggedOut() {
-      document.getElementById("authArea").classList.remove("hidden");
-      document.getElementById("appArea").classList.add("hidden");
-      document.getElementById("adminBtn").classList.add("hidden");
-      document.getElementById("reportArea").classList.add("hidden");
-      lastAnalysisId = null;
-    }
-
-    function showLoggedIn() {
-      document.getElementById("authArea").classList.add("hidden");
-      document.getElementById("appArea").classList.remove("hidden");
-    }
-
-    function goToAdmin() {
-      window.location.href = "/admin.html";
-    }
-
-    function logout() {
-      removeToken();
-      showLoggedOut();
-      document.getElementById("authResult").innerHTML = "Sessão encerrada.";
-      document.getElementById("resultBox").innerHTML = "Aguardando análise...";
-    }
-
-    function formatMoney(value) {
-      if (value === null || value === undefined || isNaN(value)) {
-        return "N/D";
-      }
-
-      return Number(value).toLocaleString("pt-BR", {
-        style: "currency",
-        currency: "BRL"
-      });
-    }
-
-    function getRiskClass(risk) {
-      if (risk === "baixo") return "risk-low";
-      if (risk === "medio" || risk === "médio" || risk === "medio_baixo") return "risk-medium";
-      return "risk-high";
-    }
-
-    function getRiskCalloutClass(risk) {
-      if (risk === "baixo") return "callout callout-low";
-      if (risk === "medio" || risk === "médio" || risk === "medio_baixo") return "callout callout-medium";
-      return "callout callout-high";
-    }
-
-    function getTipoBadge(tipo) {
-      if (tipo === "arrecadacao") {
-        return `<span class="badge badge-arrecadacao">Arrecadação</span>`;
-      }
-
-      if (tipo === "cobranca_bancaria") {
-        return `<span class="badge badge-cobranca">Cobrança Bancária</span>`;
-      }
-
-      return `<span class="badge badge-desconhecido">Não Reconhecido</span>`;
-    }
-
-    function renderGuidance(data) {
-      const tipo = data.tipo || "";
-      const risco = data.risco || "";
-      const segmento = data.segmento_descricao || "";
-
-      if (tipo === "arrecadacao" && risco === "baixo") {
-        if (segmento) {
-          return `Documento com características compatíveis com arrecadação legítima. Segmento identificado: ${segmento}. Ainda assim, confira o beneficiário antes do pagamento.`;
-        }
-        return "Documento com características compatíveis com arrecadação ou conta do dia a dia. Ainda assim, confira o beneficiário antes de pagar.";
-      }
-
-      if (tipo === "arrecadacao" && risco === "medio") {
-        return "A estrutura parece de arrecadação, mas ainda requer conferência do beneficiário, segmento e contexto da cobrança.";
-      }
-
-      if (tipo === "cobranca_bancaria" && risco === "baixo") {
-        return "Boleto bancário com baixo risco estrutural. Mesmo assim, valide o recebedor e o motivo do pagamento.";
-      }
-
-      if (risco === "alto") {
-        return "A análise encontrou inconsistências ou sinais insuficientes de legitimidade. Evite pagar sem validação manual.";
-      }
-
-      return "Use o resultado como análise de risco, não como garantia absoluta de legitimidade.";
-    }
-
-    function renderAnalysisResult(data, originLabel = "Análise concluída") {
-      const riskClass = getRiskClass(data.risco);
-      const calloutClass = getRiskCalloutClass(data.risco);
-
-      return `
-        <div class="ok">${originLabel}</div>
-
-        ${data.arquivo ? `<div class="info-line"><b>Arquivo:</b> ${data.arquivo}</div>` : ""}
-        ${data.metodo_extracao ? `<div class="info-line"><b>Método de extração:</b> ${data.metodo_extracao}</div>` : ""}
-        ${data.linha_encontrada_no_pdf ? `<div class="info-line"><b>Linha encontrada:</b> ${data.linha_encontrada_no_pdf}</div>` : ""}
-
-        <div class="info-line"><b>Tipo:</b> ${data.tipo || "N/D"} ${getTipoBadge(data.tipo)}</div>
-        <div class="info-line"><b>Banco / Emissor:</b> ${data.banco_nome || data.banco || "N/D"}</div>
-        <div class="info-line"><b>Categoria:</b> ${data.categoria || "N/D"}</div>
-        <div class="info-line"><b>Risco:</b> <span class="${riskClass}">${data.risco || "N/D"}</span></div>
-        <div class="info-line"><b>Score:</b> ${data.score !== undefined ? data.score : "N/D"}</div>
-        <div class="info-line"><b>Mensagem:</b> ${data.mensagem || "N/D"}</div>
-
-        <div class="grid-2">
-          <div>
-            <div class="info-line"><b>Valor:</b> ${formatMoney(data.valor)}</div>
-            <div class="info-line"><b>Vencimento:</b> ${data.vencimento || "N/D"}</div>
-            <div class="info-line"><b>DV dos campos:</b> ${data.valido_dv_campos ? "Válido" : "Inválido"}</div>
-            <div class="info-line"><b>DV geral:</b> ${data.valido_dv_geral ? "Válido" : "Inválido"}</div>
-          </div>
-
-          <div>
-            <div class="info-line"><b>Segmento:</b> ${data.segmento || "N/D"}</div>
-            <div class="info-line"><b>Descrição do segmento:</b> ${data.segmento_descricao || "N/D"}</div>
-            <div class="info-line"><b>Código empresa/órgão:</b> ${data.empresa_orgao_codigo || "N/D"}</div>
-            <div class="info-line"><b>Uso no mês:</b> ${data.used_this_month}</div>
-            <div class="info-line"><b>Restante:</b> ${data.remaining}</div>
-          </div>
-        </div>
-
-        <div class="info-line"><b>Observações:</b> ${(data.observacoes && data.observacoes.length) ? data.observacoes.join(" | ") : "Nenhuma observação adicional"}</div>
-
-        <div class="${calloutClass}">
-          ${renderGuidance(data)}
-        </div>
-      `;
-    }
-
-    function mostrarBotaoRelatorio(analysisId) {
-      if (!analysisId) {
-        document.getElementById("reportArea").classList.add("hidden");
-        lastAnalysisId = null;
-        return;
-      }
-
-      lastAnalysisId = analysisId;
-      document.getElementById("reportArea").classList.remove("hidden");
-    }
-
-    function baixarRelatorioPdf() {
-      const token = getToken();
-
-      if (!token || !lastAnalysisId) {
-        alert("Nenhuma análise disponível para gerar relatório.");
-        return;
-      }
-
-      fetch(`${API_URL}/reports/${lastAnalysisId}/pdf`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      })
-      .then(async (res) => {
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.detail || "Erro ao gerar relatório PDF");
-        }
-        return res.blob();
-      })
-      .then((blob) => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `relatorio_analise_${lastAnalysisId}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-      })
-      .catch((error) => {
-        alert(error.message);
-      });
-    }
-
-    async function register() {
-      const name = document.getElementById("registerName").value.trim();
-      const email = document.getElementById("registerEmail").value.trim();
-      const password = document.getElementById("registerPassword").value.trim();
-      const authResult = document.getElementById("authResult");
-
-      if (!name || !email || !password) {
-        authResult.innerHTML = '<span class="error">Preencha nome, e-mail e senha.</span>';
-        return;
-      }
-
-      authResult.innerHTML = "Criando conta...";
-
-      try {
-        const res = await fetch(`${API_URL}/register`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ name, email, password })
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.detail || "Erro ao cadastrar");
-        }
-
-        authResult.innerHTML = `<span class="ok">${data.message}</span>`;
-      } catch (error) {
-        authResult.innerHTML = `<span class="error">${error.message}</span>`;
-      }
-    }
-
-    async function login() {
-      const email = document.getElementById("loginEmail").value.trim();
-      const password = document.getElementById("loginPassword").value.trim();
-      const authResult = document.getElementById("authResult");
-
-      if (!email || !password) {
-        authResult.innerHTML = '<span class="error">Preencha e-mail e senha.</span>';
-        return;
-      }
-
-      authResult.innerHTML = "Entrando...";
-
-      try {
-        const res = await fetch(`${API_URL}/login`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ email, password })
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.detail || "Erro no login");
-        }
-
-        setToken(data.access_token);
-        authResult.innerHTML = `<span class="ok">Login realizado com sucesso.</span>`;
-
-        showLoggedIn();
-        await loadMe();
-      } catch (error) {
-        authResult.innerHTML = `<span class="error">${error.message}</span>`;
-      }
-    }
-
-    async function loadMe() {
-      const token = getToken();
-      const meBox = document.getElementById("meBox");
-
-      if (!token) {
-        showLoggedOut();
-        return;
-      }
-
-      meBox.innerHTML = "Carregando dados da conta...";
-
-      try {
-        const res = await fetch(`${API_URL}/me`, {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.detail || "Erro ao carregar conta");
-        }
-
-        meBox.innerHTML = `
-          <div class="info-line"><b>Nome:</b> ${data.name}</div>
-          <div class="info-line"><b>E-mail:</b> ${data.email}</div>
-          <div class="info-line"><b>Plano:</b> ${data.plan}</div>
-          <div class="info-line"><b>Status:</b> ${data.is_admin ? "<span class='ok'>Administrador</span>" : "Usuário"}</div>
-          <div class="info-line"><b>Conta ativa:</b> ${data.is_active ? "Sim" : "Não"}</div>
-          <div class="info-line"><b>Limite mensal:</b> ${data.monthly_limit}</div>
-          <div class="info-line"><b>Usado no mês:</b> ${data.used_this_month}</div>
-          <div class="info-line"><b>Restante:</b> ${data.remaining}</div>
-        `;
-
-        if (data.is_admin) {
-          document.getElementById("adminBtn").classList.remove("hidden");
-        } else {
-          document.getElementById("adminBtn").classList.add("hidden");
-        }
-      } catch (error) {
-        removeToken();
-        showLoggedOut();
-        document.getElementById("authResult").innerHTML = `<span class="error">${error.message}</span>`;
-      }
-    }
-
-    async function analisar() {
-      const token = getToken();
-      const linha = document.getElementById("linha").value.trim();
-      const beneficiario = document.getElementById("beneficiario").value.trim();
-      const resultBox = document.getElementById("resultBox");
-
-      if (!token) {
-        resultBox.innerHTML = '<span class="error">Você precisa estar logado.</span>';
-        return;
-      }
-
-      if (!linha) {
-        resultBox.innerHTML = '<span class="error">Digite a linha digitável ou código de barras.</span>';
-        return;
-      }
-
-      document.getElementById("reportArea").classList.add("hidden");
-      lastAnalysisId = null;
-      resultBox.innerHTML = "Analisando boleto...";
-
-      try {
-        const res = await fetch(`${API_URL}/analisar`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            linha_digitavel: linha,
-            beneficiario: beneficiario
-          })
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.detail || "Erro ao analisar");
-        }
-
-        resultBox.innerHTML = renderAnalysisResult(data, "Análise concluída");
-        mostrarBotaoRelatorio(data.analysis_id);
-        await loadMe();
-      } catch (error) {
-        resultBox.innerHTML = `<span class="error">${error.message}</span>`;
-      }
-    }
-
-    async function analisarPdf() {
-      const token = getToken();
-      const fileInput = document.getElementById("pdfFile");
-      const resultBox = document.getElementById("resultBox");
-
-      if (!token) {
-        resultBox.innerHTML = '<span class="error">Você precisa estar logado.</span>';
-        return;
-      }
-
-      if (!fileInput.files || !fileInput.files[0]) {
-        resultBox.innerHTML = '<span class="error">Selecione um arquivo PDF.</span>';
-        return;
-      }
-
-      document.getElementById("reportArea").classList.add("hidden");
-      lastAnalysisId = null;
-
-      const formData = new FormData();
-      formData.append("file", fileInput.files[0]);
-
-      resultBox.innerHTML = "Lendo PDF e analisando boleto...";
-
-      try {
-        const res = await fetch(`${API_URL}/analisar-pdf`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${token}`
-          },
-          body: formData
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.detail || "Erro ao analisar PDF");
-        }
-
-        resultBox.innerHTML = renderAnalysisResult(data, "Análise do PDF concluída");
-        mostrarBotaoRelatorio(data.analysis_id);
-        await loadMe();
-      } catch (error) {
-        resultBox.innerHTML = `<span class="error">${error.message}</span>`;
-      }
-    }
-
-    async function init() {
-      const token = getToken();
-
-      if (token) {
-        showLoggedIn();
-        await loadMe();
-      } else {
-        showLoggedOut();
-      }
-    }
-
-    init();
-  </script>
 </body>
 </html>

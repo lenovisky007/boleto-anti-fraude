@@ -1,29 +1,55 @@
-from datetime import datetime, timedelta
-from jose import jwt, JWTError
-from passlib.context import CryptContext
-import os
+from fastapi import HTTPException, Request
+from sqlalchemy.orm import Session
+from models import User
+import uuid
 
-SECRET_KEY = os.getenv("SECRET_KEY", "fallback-dev-key")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_HOURS = 24
+def get_current_user(request: Request, db: Session):
+    token = request.headers.get("Authorization")
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    if not token:
+        raise HTTPException(status_code=401, detail="Token não enviado")
 
-def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    user = db.query(User).filter(User.token == token).first()
 
-def verify_password(password: str, password_hash: str) -> bool:
-    return pwd_context.verify(password, password_hash)
+    if not user:
+        raise HTTPException(status_code=401, detail="Usuário inválido")
 
-def create_access_token(data: dict):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return user
 
-def decode_access_token(token: str):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
-    except JWTError:
-        return None
+
+def register_user(username: str, password: str, db: Session):
+    user = db.query(User).filter(User.username == username).first()
+
+    if user:
+        raise HTTPException(status_code=400, detail="Usuário já existe")
+
+    token = str(uuid.uuid4())
+
+    new_user = User(
+        username=username,
+        password=password,
+        token=token
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
+
+
+def login_user(username: str, password: str, db: Session):
+    user = db.query(User).filter(
+        User.username == username,
+        User.password == password
+    ).first()
+
+    if not user:
+        raise HTTPException(status_code=401, detail="Login inválido")
+
+    return user
+
+
+def require_admin(user):
+    if not user.is_admin:
+        raise HTTPException(status_code=403, detail="Acesso negado")
