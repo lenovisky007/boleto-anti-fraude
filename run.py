@@ -6,7 +6,6 @@ if __name__ == "__main__":
 
     uvicorn.run(
         "app.main:app",
-        host="0.0.0.0",  # 🔥 ESSENCIAL
-        port=port,
-        reload=False     # 🔥 IMPORTANTE (Railway não usa reload)
+        host="0.0.0.0",
+        port=port
     )
