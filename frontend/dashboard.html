@@ -1,0 +1,57 @@
+```html
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard - Antifraude</title>
+</head>
+<body>
+
+<h2>Validar Boleto</h2>
+
+<textarea id="codigo" placeholder="Cole a linha digitável"></textarea><br><br>
+<input id="beneficiario" placeholder="Beneficiário (opcional)"><br><br>
+
+<button onclick="validar()">Analisar</button>
+<button onclick="logout()">Sair</button>
+
+<pre id="resultado"></pre>
+
+<script>
+const API_URL = "https://boleto-anti-fraude-production.up.railway.app";
+
+function logout() {
+  localStorage.removeItem("token");
+  window.location.href = "index.html";
+}
+
+async function validar() {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    alert("Faça login primeiro");
+    return;
+  }
+
+  const codigo = document.getElementById("codigo").value;
+  const beneficiario = document.getElementById("beneficiario").value;
+
+  const res = await fetch(API_URL + "/validar-boleto", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token
+    },
+    body: JSON.stringify({ codigo, beneficiario })
+  });
+
+  const data = await res.json();
+
+  document.getElementById("resultado").innerText =
+    JSON.stringify(data, null, 2);
+}
+</script>
+
+</body>
+</html>
+```

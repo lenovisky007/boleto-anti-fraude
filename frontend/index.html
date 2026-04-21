@@ -1,0 +1,47 @@
+```html
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Login - Antifraude</title>
+</head>
+<body>
+
+<h2>Login</h2>
+
+<input id="email" placeholder="Email"><br><br>
+<input id="password" type="password" placeholder="Senha"><br><br>
+
+<button onclick="login()">Entrar</button>
+
+<p id="msg"></p>
+
+<script>
+const API_URL = "https://boleto-anti-fraude-production.up.railway.app";
+
+async function login() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const res = await fetch(API_URL + "/auth/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ email, password })
+  });
+
+  const data = await res.json();
+
+  if (res.ok) {
+    localStorage.setItem("token", data.access_token);
+    window.location.href = "dashboard.html";
+  } else {
+    document.getElementById("msg").innerText = data.detail;
+  }
+}
+</script>
+
+</body>
+</html>
+```
