@@ -23,10 +23,7 @@ class BoletoRequest(BaseModel):
 # =========================
 @app.get("/")
 def home():
-    return {
-        "status": "online",
-        "service": "Boleto Antifraude SaaS 🚀"
-    }
+    return {"status": "online"}
 
 
 # =========================
