@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Optional, Dict, Any
 
-from data_loader import (
+from app.data_loader import (
     KNOWN_LOW_RISK_BENEFICIARIES,
     CONCESSIONARIA_KEYWORDS,
     GOV_BENEFICIARY_KEYWORDS,
