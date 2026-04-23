@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 import re
 
-from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File
+from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -18,6 +18,9 @@ from app.auth import (
 )
 from app.risk import analyze_boleto
 from app.pdf_parser import extract_boleto_from_pdf
+
+# garante que os models sejam registrados antes do create_all
+from app import models  # noqa: F401
 
 
 app = FastAPI(title="Boleto Antifraude")
@@ -39,7 +42,7 @@ app.add_middleware(
 
 @app.options("/{rest_of_path:path}")
 def preflight_handler(rest_of_path: str):
-    return {}
+    return Response(status_code=200)
 
 
 Base.metadata.create_all(bind=engine)
@@ -109,6 +112,9 @@ def get_current_user(
     if not user:
         raise HTTPException(status_code=401, detail="Usuário não encontrado")
 
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Conta desativada")
+
     return user
 
 
@@ -126,6 +132,11 @@ def get_current_month_usage(db: Session, user_id: int) -> int:
 @app.get("/")
 def home():
     return {"status": "API rodando 🚀"}
+
+
+@app.get("/health")
+def health():
+    return {"ok": True}
 
 
 @app.get("/me")
@@ -147,12 +158,13 @@ def me(current_user: User = Depends(get_current_user), db: Session = Depends(get
 
 @app.post("/register")
 def register(payload: RegisterRequest, db: Session = Depends(get_db)):
-    if db.query(User).filter(User.email == payload.email).first():
+    existing = db.query(User).filter(User.email == payload.email).first()
+    if existing:
         raise HTTPException(status_code=400, detail="Email já cadastrado")
 
     user = User(
-        name=payload.name,
-        email=payload.email,
+        name=payload.name.strip(),
+        email=payload.email.strip().lower(),
         password_hash=hash_password(payload.password),
         plan="free",
         monthly_limit=10,
@@ -169,7 +181,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
 
 @app.post("/login")
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == payload.email).first()
+    user = db.query(User).filter(User.email == payload.email.strip().lower()).first()
 
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
@@ -198,6 +210,9 @@ def analisar(
 
     linha = limpar_linha(payload.linha_digitavel)
 
+    if not linha:
+        raise HTTPException(status_code=400, detail="Linha digitável inválida")
+
     analise = analyze_boleto(linha, beneficiario=payload.beneficiario or "")
 
     db.add(AnalysisLog(user_id=current_user.id))
@@ -220,6 +235,9 @@ def analisar_pdf(
 
     if used >= current_user.monthly_limit:
         raise HTTPException(status_code=403, detail="Limite atingido")
+
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Envie um arquivo PDF válido")
 
     parsed = extract_boleto_from_pdf(file.file)
     linha = parsed.get("linha_digitavel")
