@@ -6,6 +6,7 @@ DATABASE_URL = settings.DATABASE_URL
 
 connect_args = {}
 
+# Compatibilidade com SQLite e Postgres (Railway)
 if DATABASE_URL.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
 elif DATABASE_URL.startswith("postgresql"):
