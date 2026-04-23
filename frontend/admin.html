@@ -1,40 +1,246 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
-  <title>Dashboard SaaS</title>
+<meta charset="UTF-8">
+<title>Admin - Antifraude</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+body {
+  background: linear-gradient(135deg, #020617, #0f172a);
+  color: white;
+  padding: 20px;
+}
+
+.container {
+  max-width: 1200px;
+  margin: auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 30px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.logout {
+  background: #ef4444;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.card {
+  background: rgba(255,255,255,0.05);
+  padding: 20px;
+  border-radius: 14px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.card h3 {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.card p {
+  font-size: 22px;
+  font-weight: bold;
+  margin-top: 5px;
+}
+
+.table {
+  width: 100%;
+  margin-top: 20px;
+  border-collapse: collapse;
+}
+
+.table th, .table td {
+  padding: 10px;
+  text-align: left;
+}
+
+.table th {
+  opacity: 0.7;
+}
+
+.table tr {
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.badge {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.free { background: #334155; }
+.pro { background: #22c55e; }
+
+button.action {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #3b82f6;
+  color: white;
+}
+
+button.block {
+  background: #ef4444;
+}
+</style>
 </head>
+
 <body>
 
-<h1>Dashboard Antifraude</h1>
+<div class="container">
 
-<input id="token" placeholder="Token JWT">
+  <div class="header">
+    <div class="title">🧠 Painel Admin</div>
+    <button class="logout" onclick="logout()">Sair</button>
+  </div>
 
-<br><br>
+  <!-- KPIs -->
+  <div class="grid">
+    <div class="card">
+      <h3>Usuários</h3>
+      <p id="users">-</p>
+    </div>
 
-<textarea id="boleto" placeholder="linha digitável"></textarea>
+    <div class="card">
+      <h3>Análises Hoje</h3>
+      <p id="requests">-</p>
+    </div>
 
-<button onclick="validar()">Validar</button>
+    <div class="card">
+      <h3>Fraudes Detectadas</h3>
+      <p id="fraudes">-</p>
+    </div>
 
-<pre id="resultado"></pre>
+    <div class="card">
+      <h3>Plano PRO</h3>
+      <p id="pro">-</p>
+    </div>
+  </div>
+
+  <!-- Usuários -->
+  <div class="card">
+    <h3>Usuários</h3>
+
+    <table class="table" id="userTable">
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Plano</th>
+          <th>Requests</th>
+          <th>Status</th>
+          <th>Ação</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+</div>
 
 <script>
-async function validar() {
-    const token = document.getElementById("token").value;
-    const codigo = document.getElementById("boleto").value;
+const API_URL = "https://boleto-anti-fraude-production.up.railway.app";
 
-    const res = await fetch("http://127.0.0.1:8000/validar-boleto", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + token
-        },
-        body: JSON.stringify({ codigo })
-    });
-
-    const data = await res.json();
-    document.getElementById("resultado").innerText =
-        JSON.stringify(data, null, 2);
+function logout() {
+  localStorage.removeItem("token");
+  window.location.href = "index.html";
 }
+
+async function loadAdmin() {
+  const token = localStorage.getItem("token");
+
+  const res = await fetch(API_URL + "/admin/dashboard", {
+    headers: {
+      "Authorization": "Bearer " + token
+    }
+  });
+
+  const data = await res.json();
+
+  document.getElementById("users").innerText = data.total_users;
+  document.getElementById("requests").innerText = data.total_requests;
+  document.getElementById("fraudes").innerText = data.total_fraudes;
+  document.getElementById("pro").innerText = data.total_pro;
+
+  const tbody = document.querySelector("#userTable tbody");
+  tbody.innerHTML = "";
+
+  data.users.forEach(user => {
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${user.email}</td>
+      <td><span class="badge ${user.plan}">${user.plan}</span></td>
+      <td>${user.requests_used}</td>
+      <td>${user.is_active ? "Ativo" : "Bloqueado"}</td>
+      <td>
+        <button class="action" onclick="upgrade('${user.email}')">PRO</button>
+        <button class="action block" onclick="block('${user.email}')">Bloquear</button>
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+}
+
+async function upgrade(email) {
+  const token = localStorage.getItem("token");
+
+  await fetch(API_URL + "/admin/upgrade", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + token,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ email })
+  });
+
+  loadAdmin();
+}
+
+async function block(email) {
+  const token = localStorage.getItem("token");
+
+  await fetch(API_URL + "/admin/block", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + token,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ email })
+  });
+
+  loadAdmin();
+}
+
+loadAdmin();
 </script>
 
 </body>

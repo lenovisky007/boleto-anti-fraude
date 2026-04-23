@@ -1,21 +1,179 @@
-```html
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
   <title>Dashboard - Antifraude</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: white;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+
+    .title {
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    .logout {
+      background: transparent;
+      border: 1px solid #f87171;
+      color: #f87171;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .logout:hover {
+      background: #f87171;
+      color: white;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(12px);
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      margin-bottom: 20px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      background: rgba(255,255,255,0.1);
+      color: white;
+      margin-bottom: 10px;
+      outline: none;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      background: linear-gradient(135deg, #3b82f6, #6366f1);
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(59,130,246,0.3);
+    }
+
+    .score-box {
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .score {
+      font-size: 48px;
+      font-weight: bold;
+    }
+
+    .risk {
+      font-size: 18px;
+      margin-top: 5px;
+    }
+
+    .green { color: #22c55e; }
+    .yellow { color: #facc15; }
+    .red { color: #f87171; }
+
+    .bg-green { background: #22c55e; }
+    .bg-yellow { background: #facc15; }
+    .bg-red { background: #f87171; }
+
+    .details {
+      margin-top: 15px;
+      font-size: 14px;
+      opacity: 0.85;
+    }
+
+    .mensagem {
+      margin-top: 15px;
+      font-weight: bold;
+      font-size: 15px;
+    }
+
+    .barra-container {
+      background: #1e293b;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 15px;
+    }
+
+    .barra {
+      height: 10px;
+      width: 0%;
+      transition: 0.5s;
+    }
+  </style>
 </head>
+
 <body>
 
-<h2>Validar Boleto</h2>
+<div class="container">
 
-<textarea id="codigo" placeholder="Cole a linha digitável"></textarea><br><br>
-<input id="beneficiario" placeholder="Beneficiário (opcional)"><br><br>
+  <div class="header">
+    <div class="title">🔎 Antifraude Dashboard</div>
+    <button class="logout" onclick="logout()">Sair</button>
+  </div>
 
-<button onclick="validar()">Analisar</button>
-<button onclick="logout()">Sair</button>
+  <div class="card">
+    <input id="codigo" placeholder="Cole a linha digitável ou código de barras">
+    <input id="beneficiario" placeholder="Beneficiário (opcional)">
+    <button onclick="validar()">Analisar Boleto</button>
+  </div>
 
-<pre id="resultado"></pre>
+  <div class="card" id="resultado" style="display:none; text-align:center;">
+
+    <div id="statusIcon" style="font-size:50px;">⚪</div>
+
+    <div class="score-box">
+      <div id="score" class="score">0</div>
+      <div id="risk" class="risk">-</div>
+    </div>
+
+    <div class="barra-container">
+      <div id="barra" class="barra bg-green"></div>
+    </div>
+
+    <div id="mensagem" class="mensagem"></div>
+
+    <div class="details" id="details"></div>
+
+  </div>
+
+</div>
 
 <script>
 const API_URL = "https://boleto-anti-fraude-production.up.railway.app";
@@ -25,33 +183,77 @@ function logout() {
   window.location.href = "index.html";
 }
 
+function getRiskVisual(score) {
+  if (score <= 25) {
+    return { color: "green", icon: "🟢", label: "Baixo risco" };
+  }
+  if (score <= 55) {
+    return { color: "yellow", icon: "🟡", label: "Atenção" };
+  }
+  return { color: "red", icon: "🔴", label: "Alto risco" };
+}
+
 async function validar() {
   const token = localStorage.getItem("token");
 
   if (!token) {
-    alert("Faça login primeiro");
+    alert("Você precisa estar logado");
+    window.location.href = "index.html";
     return;
   }
 
   const codigo = document.getElementById("codigo").value;
   const beneficiario = document.getElementById("beneficiario").value;
 
-  const res = await fetch(API_URL + "/validar-boleto", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + token
-    },
-    body: JSON.stringify({ codigo, beneficiario })
-  });
+  try {
+    const res = await fetch(API_URL + "/validar-boleto", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify({ codigo, beneficiario })
+    });
 
-  const data = await res.json();
+    const data = await res.json();
+    const result = data.result;
 
-  document.getElementById("resultado").innerText =
-    JSON.stringify(data, null, 2);
+    document.getElementById("resultado").style.display = "block";
+
+    const visual = getRiskVisual(result.score);
+
+    const scoreEl = document.getElementById("score");
+    const riskEl = document.getElementById("risk");
+    const barra = document.getElementById("barra");
+    const icon = document.getElementById("statusIcon");
+    const msg = document.getElementById("mensagem");
+    const detailsEl = document.getElementById("details");
+
+    scoreEl.innerText = result.score;
+    scoreEl.className = "score " + visual.color;
+
+    riskEl.innerText = visual.label;
+
+    icon.innerText = visual.icon;
+
+    barra.style.width = result.score + "%";
+    barra.className = "barra bg-" + visual.color;
+
+    msg.innerText = result.mensagem;
+    msg.className = "mensagem " + visual.color;
+
+    detailsEl.innerHTML = `
+      <p><strong>Banco:</strong> ${result.banco_nome}</p>
+      <p><strong>Valor:</strong> ${result.valor || "N/A"}</p>
+      <p><strong>Vencimento:</strong> ${result.vencimento || "N/A"}</p>
+    `;
+
+  } catch (error) {
+    console.error(error);
+    alert("Erro ao analisar boleto");
+  }
 }
 </script>
 
 </body>
 </html>
-```
