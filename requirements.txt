@@ -4,6 +4,7 @@ pydantic
 pydantic-settings
 python-jose
 passlib[bcrypt]
+bycrypt
 sqlalchemy
 python-multipart
 python-jose

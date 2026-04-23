@@ -64,7 +64,7 @@ def login(data: UserLogin = Body(...)):
         raise HTTPException(status_code=401, detail="Usuário não encontrado")
 
     if not verify_password(data.password, user.password):
-        raise HTTPException(status_code=401, detail="Senha inválida")
+    raise HTTPException(status_code=401, detail="Senha inválida")
 
     token = create_access_token(
         {
