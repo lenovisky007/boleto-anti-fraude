@@ -1,17 +1,15 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
 from pydantic import BaseModel
 
 from app.routes.auth_routes import router as auth_router
 from app.dependencies.auth_guard import get_current_user
 from app.risk import calculate_risk
 
-app = FastAPI(title="Painel admin")
-app.include_router(auth_router)
+app = FastAPI(title="SaaS Antifraude")
 
 # =========================
-# 🔥 CORS CORRIGIDO
+# 🔥 CORS CORRETO
 # =========================
 origins = [
     "https://boleto-anti-fraude.vercel.app",
@@ -28,15 +26,7 @@ app.add_middleware(
 )
 
 # =========================
-# 🔥 GARANTE RESPOSTA AO PREFLIGHT (CRÍTICO)
-# =========================
-@app.options("/{rest_of_path:path}")
-def preflight_handler(rest_of_path: str):
-    return Response(status_code=200)
-
-
-# =========================
-# ROTAS
+# ROUTERS
 # =========================
 app.include_router(auth_router)
 
@@ -63,6 +53,7 @@ def status():
 
 @app.post("/validar-boleto")
 def validar(data: BoletoRequest, user=Depends(get_current_user)):
+
     result = calculate_risk(
         raw_code=data.codigo,
         beneficiario=data.beneficiario
