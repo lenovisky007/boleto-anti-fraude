@@ -1,182 +1,245 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Login - Antifraude</title>
-
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Boleto Anti-Fraude</title>
 
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
+    * { box-sizing: border-box; }
 
     body {
-      height: 100vh;
-      background: linear-gradient(135deg, #0f172a, #1e293b);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #06153a;
       color: white;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 30px;
     }
 
     .container {
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(15px);
-      padding: 40px;
-      border-radius: 16px;
       width: 100%;
-      max-width: 380px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-      animation: fadeIn 0.6s ease;
+      max-width: 720px;
+      background: #1d2a44;
+      border-radius: 16px;
+      padding: 28px;
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
+    h1 { text-align: center; }
+
+    .section {
+      background: #12203b;
+      border-radius: 12px;
+      padding: 18px;
+      margin-top: 18px;
     }
 
-    h2 {
-      margin-bottom: 20px;
-      text-align: center;
-      font-weight: 600;
-    }
-
-    .input-group {
-      margin-bottom: 15px;
-    }
-
-    input {
+    input, button {
       width: 100%;
       padding: 12px;
-      border-radius: 10px;
+      border-radius: 8px;
+      margin-top: 10px;
       border: none;
-      outline: none;
-      background: rgba(255,255,255,0.1);
-      color: white;
-      font-size: 14px;
-      transition: 0.3s;
-    }
-
-    input:focus {
-      background: rgba(255,255,255,0.2);
-      box-shadow: 0 0 0 2px #3b82f6;
     }
 
     button {
-      width: 100%;
-      padding: 12px;
-      border-radius: 10px;
-      border: none;
-      background: linear-gradient(135deg, #3b82f6, #6366f1);
+      background: #28c45c;
       color: white;
       font-weight: bold;
       cursor: pointer;
-      transition: 0.3s;
     }
 
-    button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 20px rgba(59,130,246,0.3);
-    }
+    .secondary { background: #2563eb; }
+    .danger { background: #dc2626; }
 
-    button:active {
-      transform: scale(0.98);
-    }
-
-    #msg {
+    .result-box {
       margin-top: 15px;
-      text-align: center;
-      font-size: 14px;
-      color: #f87171;
+      background: #08142f;
+      border-radius: 10px;
+      padding: 14px;
+      min-height: 70px;
     }
 
-    .footer {
-      margin-top: 20px;
-      text-align: center;
-      font-size: 12px;
-      opacity: 0.6;
-    }
+    .ok { color: #4ade80; }
+    .error { color: #f87171; }
 
-    .loading {
-      opacity: 0.7;
-      pointer-events: none;
-    }
+    .risk-low { color: #4ade80; }
+    .risk-medium { color: #facc15; }
+    .risk-high { color: #f87171; }
+
+    .hidden { display: none; }
   </style>
 </head>
 
 <body>
+<div class="container">
+  <h1>Boleto Anti-Fraude</h1>
 
-<div class="container" id="box">
-  <h2>🔐 Antifraude</h2>
+  <div id="authArea">
+    <div class="section">
+      <h2>Criar conta</h2>
+      <input id="registerName" placeholder="Nome">
+      <input id="registerEmail" placeholder="Email">
+      <input id="registerPassword" type="password" placeholder="Senha">
+      <button onclick="register()">Cadastrar</button>
+    </div>
 
-  <div class="input-group">
-    <input id="email" placeholder="Email">
+    <div class="section">
+      <h2>Login</h2>
+      <input id="loginEmail" placeholder="Email">
+      <input id="loginPassword" type="password" placeholder="Senha">
+      <button class="secondary" onclick="login()">Entrar</button>
+    </div>
+
+    <div id="authResult" class="result-box"></div>
   </div>
 
-  <div class="input-group">
-    <input id="password" type="password" placeholder="Senha">
-  </div>
+  <div id="appArea" class="hidden">
+    <div class="section">
+      <h2>Conta</h2>
+      <div id="meBox"></div>
+      <button class="danger" onclick="logout()">Sair</button>
+    </div>
 
-  <button onclick="login()" id="btn">Entrar</button>
+    <div class="section">
+      <h2>Analisar boleto</h2>
 
-  <p id="msg"></p>
+      <input id="linha" placeholder="Linha digitável">
+      <input id="beneficiario" placeholder="Beneficiário">
 
-  <div class="footer">
-    Proteção inteligente contra fraudes
+      <button onclick="analisar()">Analisar</button>
+
+      <input id="pdfFile" type="file" accept=".pdf">
+      <button onclick="analisarPdf()">Analisar PDF</button>
+
+      <div id="resultBox" class="result-box"></div>
+    </div>
   </div>
 </div>
 
 <script>
 const API_URL = "https://boleto-anti-fraude-production.up.railway.app";
 
+function getToken() {
+  return localStorage.getItem("token");
+}
+
+function setToken(token) {
+  localStorage.setItem("token", token);
+}
+
+function logout() {
+  localStorage.removeItem("token");
+  location.reload();
+}
+
+function showLoggedIn() {
+  document.getElementById("authArea").classList.add("hidden");
+  document.getElementById("appArea").classList.remove("hidden");
+}
+
+async function register() {
+  const res = await fetch(API_URL + "/register", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      name: registerName.value,
+      email: registerEmail.value,
+      password: registerPassword.value
+    })
+  });
+
+  const data = await res.json();
+  authResult.innerHTML = data.message || data.detail;
+}
+
 async function login() {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-  const msg = document.getElementById("msg");
-  const btn = document.getElementById("btn");
-  const box = document.getElementById("box");
+  const res = await fetch(API_URL + "/login", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      email: loginEmail.value,
+      password: loginPassword.value
+    })
+  });
 
-  msg.innerText = "";
+  const data = await res.json();
 
-  if (!email || !password) {
-    msg.innerText = "Preencha todos os campos";
-    return;
-  }
-
-  try {
-    btn.innerText = "Entrando...";
-    box.classList.add("loading");
-
-    const res = await fetch(API_URL + "/auth/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ email, password })
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      localStorage.setItem("token", data.access_token);
-      window.location.href = "dashboard.html";
-    } else {
-      msg.innerText = data.detail || "Erro ao fazer login";
-    }
-
-  } catch (error) {
-    console.error(error);
-    msg.innerText = "Erro de conexão com o servidor";
-  } finally {
-    btn.innerText = "Entrar";
-    box.classList.remove("loading");
+  if (data.access_token) {
+    setToken(data.access_token);
+    showLoggedIn();
+    loadMe();
+  } else {
+    authResult.innerHTML = data.detail;
   }
 }
-</script>
 
+async function loadMe() {
+  const res = await fetch(API_URL + "/me", {
+    headers: {"Authorization": "Bearer " + getToken()}
+  });
+
+  const data = await res.json();
+
+  meBox.innerHTML = `
+    Nome: ${data.name}<br>
+    Plano: ${data.plan}<br>
+    Uso: ${data.used_this_month}/${data.monthly_limit}
+  `;
+}
+
+async function analisar() {
+  const res = await fetch(API_URL + "/analisar", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + getToken()
+    },
+    body: JSON.stringify({
+      linha_digitavel: linha.value,
+      beneficiario: beneficiario.value
+    })
+  });
+
+  const data = await res.json();
+
+  resultBox.innerHTML = `
+    Risco: ${data.risco}<br>
+    Score: ${data.score}<br>
+    Banco: ${data.banco_nome}<br>
+    Mensagem: ${data.mensagem}
+  `;
+}
+
+async function analisarPdf() {
+  const formData = new FormData();
+  formData.append("file", pdfFile.files[0]);
+
+  const res = await fetch(API_URL + "/analisar-pdf", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + getToken()
+    },
+    body: formData
+  });
+
+  const data = await res.json();
+
+  resultBox.innerHTML = `
+    Risco: ${data.risco}<br>
+    Score: ${data.score}<br>
+    Banco: ${data.banco_nome}<br>
+    Mensagem: ${data.mensagem}
+  `;
+}
+
+if (getToken()) {
+  showLoggedIn();
+  loadMe();
+}
+</script>
 </body>
 </html>

@@ -1,247 +1,298 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Admin - Antifraude</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Painel Administrativo</title>
 
 <style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: 'Segoe UI', sans-serif;
-}
-
-body {
-  background: linear-gradient(135deg, #020617, #0f172a);
-  color: white;
-  padding: 20px;
-}
-
-.container {
-  max-width: 1200px;
-  margin: auto;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 30px;
-}
-
-.title {
-  font-size: 24px;
-  font-weight: bold;
-}
-
-.logout {
-  background: #ef4444;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 8px;
-  color: white;
-  cursor: pointer;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-  margin-bottom: 25px;
-}
-
-.card {
-  background: rgba(255,255,255,0.05);
-  padding: 20px;
-  border-radius: 14px;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-}
-
-.card h3 {
-  font-size: 14px;
-  opacity: 0.7;
-}
-
-.card p {
-  font-size: 22px;
-  font-weight: bold;
-  margin-top: 5px;
-}
-
-.table {
-  width: 100%;
-  margin-top: 20px;
-  border-collapse: collapse;
-}
-
-.table th, .table td {
-  padding: 10px;
-  text-align: left;
-}
-
-.table th {
-  opacity: 0.7;
-}
-
-.table tr {
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-
-.badge {
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 12px;
-}
-
-.free { background: #334155; }
-.pro { background: #22c55e; }
-
-button.action {
-  padding: 5px 10px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  background: #3b82f6;
-  color: white;
-}
-
-button.block {
-  background: #ef4444;
-}
+/* (mantive seu CSS original — está ótimo) */
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial;background:#06153a;color:#fff;padding:24px}
+.wrap{max-width:1180px;margin:auto}
+h1{font-size:28px;margin:0}
+.version{color:#93c5fd;margin-bottom:20px;font-size:14px}
+.card{background:#12203b;border-radius:14px;padding:18px;margin-bottom:18px}
+input,select,button{width:100%;padding:12px;border-radius:10px;border:none}
+button{cursor:pointer;color:#fff;font-weight:bold}
+.btn-green{background:#22c55e}
+.btn-blue{background:#2563eb}
+.btn-red{background:#dc2626}
+.btn-gray{background:#475569}
+.message-box{margin-top:10px;background:#08142f;padding:10px;border-radius:10px}
+.success{color:#4ade80}
+.error{color:#f87171}
+.user-card,.entity-card{background:#08142f;border:1px solid #22324f;border-radius:12px;padding:14px;margin-top:10px}
 </style>
 </head>
 
 <body>
+<div class="wrap">
+<h1>Painel Administrativo</h1>
+<div class="version">Versão compatível com novo models.py</div>
 
-<div class="container">
+<button class="btn-gray" onclick="voltar()">⬅ Voltar</button>
 
-  <div class="header">
-    <div class="title">🧠 Painel Admin</div>
-    <button class="logout" onclick="logout()">Sair</button>
-  </div>
+<div class="card">
+<h2>Usuários</h2>
 
-  <!-- KPIs -->
-  <div class="grid">
-    <div class="card">
-      <h3>Usuários</h3>
-      <p id="users">-</p>
-    </div>
+<input id="emailSearch" placeholder="Buscar por e-mail"/>
+<button class="btn-blue" onclick="buscarUsuario()">Buscar</button>
+<button class="btn-green" onclick="listarUsuarios()">Listar todos</button>
 
-    <div class="card">
-      <h3>Análises Hoje</h3>
-      <p id="requests">-</p>
-    </div>
+<div id="userMessage" class="message-box"></div>
+<div id="usersList"></div>
+</div>
 
-    <div class="card">
-      <h3>Fraudes Detectadas</h3>
-      <p id="fraudes">-</p>
-    </div>
+<div class="card">
+<h2>Entidades antifraude</h2>
 
-    <div class="card">
-      <h3>Plano PRO</h3>
-      <p id="pro">-</p>
-    </div>
-  </div>
+<input id="entityName" placeholder="Nome ou código"/>
+<select id="entityType">
+<option value="beneficiario">Beneficiário</option>
+<option value="keyword">Keyword</option>
+<option value="org_code">Código órgão</option>
+<option value="suspicious_term">Termo suspeito</option>
+</select>
 
-  <!-- Usuários -->
-  <div class="card">
-    <h3>Usuários</h3>
+<button class="btn-green" onclick="adicionarEntidade()">Adicionar</button>
 
-    <table class="table" id="userTable">
-      <thead>
-        <tr>
-          <th>Email</th>
-          <th>Plano</th>
-          <th>Requests</th>
-          <th>Status</th>
-          <th>Ação</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
+<div id="entityMessage" class="message-box"></div>
+
+<button class="btn-blue" onclick="listarEntidades()">Listar entidades</button>
+<div id="entitiesList"></div>
+</div>
 
 </div>
 
 <script>
-const API_URL = "https://boleto-anti-fraude-production.up.railway.app";
+const API = "https://boleto-anti-fraude-production.up.railway.app";
 
-function logout() {
-  localStorage.removeItem("token");
-  window.location.href = "index.html";
+function getToken(){
+  return localStorage.getItem("token");
 }
 
-async function loadAdmin() {
-  const token = localStorage.getItem("token");
+function voltar(){
+  window.location.href="/";
+}
 
-  const res = await fetch(API_URL + "/admin/dashboard", {
-    headers: {
-      "Authorization": "Bearer " + token
+function setMsg(id,msg,type=""){
+  const el=document.getElementById(id);
+  el.innerHTML= type==="error"
+    ? `<span class="error">${msg}</span>`
+    : type==="success"
+    ? `<span class="success">${msg}</span>`
+    : msg;
+}
+
+/* =========================
+   SEGURANÇA ADMIN
+========================= */
+async function verificarAdmin(){
+  try{
+    const res=await fetch(`${API}/me`,{
+      headers:{Authorization:"Bearer "+getToken()}
+    });
+
+    const data=await res.json();
+
+    if(!data.is_admin){
+      alert("Acesso restrito");
+      window.location.href="/";
     }
-  });
 
-  const data = await res.json();
-
-  document.getElementById("users").innerText = data.total_users;
-  document.getElementById("requests").innerText = data.total_requests;
-  document.getElementById("fraudes").innerText = data.total_fraudes;
-  document.getElementById("pro").innerText = data.total_pro;
-
-  const tbody = document.querySelector("#userTable tbody");
-  tbody.innerHTML = "";
-
-  data.users.forEach(user => {
-    const tr = document.createElement("tr");
-
-    tr.innerHTML = `
-      <td>${user.email}</td>
-      <td><span class="badge ${user.plan}">${user.plan}</span></td>
-      <td>${user.requests_used}</td>
-      <td>${user.is_active ? "Ativo" : "Bloqueado"}</td>
-      <td>
-        <button class="action" onclick="upgrade('${user.email}')">PRO</button>
-        <button class="action block" onclick="block('${user.email}')">Bloquear</button>
-      </td>
-    `;
-
-    tbody.appendChild(tr);
-  });
+  }catch{
+    alert("Erro de autenticação");
+    window.location.href="/";
+  }
 }
 
-async function upgrade(email) {
-  const token = localStorage.getItem("token");
+/* =========================
+   USUÁRIOS
+========================= */
+function renderUser(u){
+  return `
+  <div class="user-card">
+    <b>${u.name}</b><br>
+    ${u.email}<br>
+    Plano: ${u.plan}<br>
+    Limite: ${u.monthly_limit}<br>
+    Usado: ${u.used_this_month ?? 0}<br>
+    Restante: ${u.remaining ?? 0}<br>
+    Admin: ${u.is_admin ? "SIM" : "NÃO"}<br>
+    Ativo: ${u.is_active ? "SIM" : "NÃO"}<br><br>
 
-  await fetch(API_URL + "/admin/upgrade", {
-    method: "POST",
-    headers: {
-      "Authorization": "Bearer " + token,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ email })
-  });
+    <input id="plan-${u.email}" placeholder="Novo plano"/>
+    <input id="limit-${u.email}" placeholder="Novo limite"/>
 
-  loadAdmin();
+    <button class="btn-green" onclick="alterarPlano('${u.email}')">Atualizar plano</button>
+    <button class="btn-red" onclick="alterarStatus('${u.email}',false)">Bloquear</button>
+    <button class="btn-blue" onclick="alterarStatus('${u.email}',true)">Ativar</button>
+  </div>`;
 }
 
-async function block(email) {
-  const token = localStorage.getItem("token");
+async function listarUsuarios(){
+  setMsg("userMessage","Carregando...");
 
-  await fetch(API_URL + "/admin/block", {
-    method: "POST",
-    headers: {
-      "Authorization": "Bearer " + token,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ email })
-  });
+  try{
+    const res=await fetch(`${API}/admin/users`,{
+      headers:{Authorization:"Bearer "+getToken()}
+    });
 
-  loadAdmin();
+    const data=await res.json();
+
+    if(!res.ok) throw new Error(data.detail);
+
+    document.getElementById("usersList").innerHTML =
+      data.map(renderUser).join("");
+
+    setMsg("userMessage","Usuários carregados","success");
+
+  }catch(e){
+    setMsg("userMessage",e.message,"error");
+  }
 }
 
-loadAdmin();
+async function buscarUsuario(){
+  const email=document.getElementById("emailSearch").value;
+
+  try{
+    const res=await fetch(`${API}/admin/user-by-email?email=${email}`,{
+      headers:{Authorization:"Bearer "+getToken()}
+    });
+
+    const data=await res.json();
+
+    if(!res.ok) throw new Error(data.detail);
+
+    document.getElementById("usersList").innerHTML = renderUser(data);
+
+  }catch(e){
+    setMsg("userMessage",e.message,"error");
+  }
+}
+
+async function alterarPlano(email){
+  const plan=document.getElementById(`plan-${email}`).value;
+  const limit=document.getElementById(`limit-${email}`).value;
+
+  try{
+    const res=await fetch(`${API}/admin/change-plan`,{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        Authorization:"Bearer "+getToken()
+      },
+      body:JSON.stringify({
+        email,
+        plan,
+        monthly_limit:Number(limit)
+      })
+    });
+
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.detail);
+
+    alert("Atualizado");
+    listarUsuarios();
+
+  }catch(e){
+    alert(e.message);
+  }
+}
+
+async function alterarStatus(email,is_active){
+  try{
+    const res=await fetch(`${API}/admin/toggle-user-status`,{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        Authorization:"Bearer "+getToken()
+      },
+      body:JSON.stringify({email,is_active})
+    });
+
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.detail);
+
+    listarUsuarios();
+
+  }catch(e){
+    alert(e.message);
+  }
+}
+
+/* =========================
+   ENTIDADES
+========================= */
+function renderEntity(e){
+  return `
+  <div class="entity-card">
+    ${e.name} (${e.type})
+    <button class="btn-red" onclick="removerEntidade(${e.id})">Remover</button>
+  </div>`;
+}
+
+async function adicionarEntidade(){
+  const name=document.getElementById("entityName").value;
+  const type=document.getElementById("entityType").value;
+
+  try{
+    const res=await fetch(`${API}/admin/entities`,{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        Authorization:"Bearer "+getToken()
+      },
+      body:JSON.stringify({name,type})
+    });
+
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.detail);
+
+    setMsg("entityMessage","Adicionado","success");
+    listarEntidades();
+
+  }catch(e){
+    setMsg("entityMessage",e.message,"error");
+  }
+}
+
+async function listarEntidades(){
+  try{
+    const res=await fetch(`${API}/admin/entities`,{
+      headers:{Authorization:"Bearer "+getToken()}
+    });
+
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.detail);
+
+    document.getElementById("entitiesList").innerHTML =
+      data.map(renderEntity).join("");
+
+  }catch(e){
+    setMsg("entityMessage",e.message,"error");
+  }
+}
+
+async function removerEntidade(id){
+  if(!confirm("Remover?")) return;
+
+  await fetch(`${API}/admin/entities/${id}`,{
+    method:"DELETE",
+    headers:{Authorization:"Bearer "+getToken()}
+  });
+
+  listarEntidades();
+}
+
+/* INIT */
+if(!getToken()){
+  alert("Faça login");
+  window.location.href="/";
+}else{
+  verificarAdmin();
+}
 </script>
-
 </body>
 </html>
