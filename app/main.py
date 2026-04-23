@@ -1,8 +1,6 @@
 from datetime import datetime
 from typing import Optional
-import os
 import re
-import json
 
 from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,18 +8,20 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import extract
 
-from database import SessionLocal, engine, Base
-from models import User, AnalysisLog, TrustedEntity, AnalysisResult
-from auth import hash_password, verify_password, create_access_token, decode_access_token
-from risk import analyze_boleto
-from pdf_parser import extract_boleto_from_pdf
+from app.database import SessionLocal, engine, Base
+from app.models import User, AnalysisLog
+from app.auth import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    decode_access_token,
+)
+from app.risk import analyze_boleto
+from app.pdf_parser import extract_boleto_from_pdf
 
 
-app = FastAPI()
+app = FastAPI(title="Boleto Antifraude")
 
-# =========================
-# 🔥 CORS AJUSTADO (IMPORTANTE)
-# =========================
 origins = [
     "https://boleto-anti-fraude.vercel.app",
     "http://localhost:3000",
@@ -36,17 +36,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# garante resposta pro preflight (evita erro no login)
+
 @app.options("/{rest_of_path:path}")
 def preflight_handler(rest_of_path: str):
     return {}
 
+
 Base.metadata.create_all(bind=engine)
 
-
-# ============================================================
-# MODELOS
-# ============================================================
 
 class RegisterRequest(BaseModel):
     name: str
@@ -63,31 +60,6 @@ class AnalyzeRequest(BaseModel):
     linha_digitavel: str
     beneficiario: Optional[str] = ""
 
-
-class AdminChangePlanRequest(BaseModel):
-    email: str
-    plan: str
-    monthly_limit: int
-
-
-class AdminToggleUserStatusRequest(BaseModel):
-    email: str
-    is_active: bool
-
-
-class BootstrapAdminRequest(BaseModel):
-    email: str
-    secret: str
-
-
-class TrustedEntityCreateRequest(BaseModel):
-    name: str
-    type: str
-
-
-# ============================================================
-# HELPERS
-# ============================================================
 
 def get_db():
     db = SessionLocal()
@@ -129,18 +101,15 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Token inválido")
 
     user_id = payload.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Token inválido")
+
     user = db.query(User).filter(User.id == user_id).first()
 
     if not user:
         raise HTTPException(status_code=401, detail="Usuário não encontrado")
 
     return user
-
-
-def get_admin_user(current_user: User = Depends(get_current_user)):
-    if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="Acesso restrito")
-    return current_user
 
 
 def get_current_month_usage(db: Session, user_id: int) -> int:
@@ -154,13 +123,26 @@ def get_current_month_usage(db: Session, user_id: int) -> int:
     ).count()
 
 
-# ============================================================
-# AUTH
-# ============================================================
-
 @app.get("/")
 def home():
     return {"status": "API rodando 🚀"}
+
+
+@app.get("/me")
+def me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    used = get_current_month_usage(db, current_user.id)
+
+    return {
+        "id": current_user.id,
+        "name": current_user.name,
+        "email": current_user.email,
+        "plan": current_user.plan,
+        "monthly_limit": current_user.monthly_limit,
+        "used_this_month": used,
+        "remaining": max(current_user.monthly_limit - used, 0),
+        "is_admin": current_user.is_admin,
+        "is_active": current_user.is_active,
+    }
 
 
 @app.post("/register")
@@ -175,11 +157,12 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
         plan="free",
         monthly_limit=10,
         is_admin=False,
-        is_active=True
+        is_active=True,
     )
 
     db.add(user)
     db.commit()
+    db.refresh(user)
 
     return {"message": "Usuário criado com sucesso"}
 
@@ -198,19 +181,15 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 
     return {
         "access_token": token,
-        "token_type": "bearer"
+        "token_type": "bearer",
     }
 
-
-# ============================================================
-# BOLETO
-# ============================================================
 
 @app.post("/analisar")
 def analisar(
     payload: AnalyzeRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     used = get_current_month_usage(db, current_user.id)
 
@@ -219,12 +198,14 @@ def analisar(
 
     linha = limpar_linha(payload.linha_digitavel)
 
-    analise = analyze_boleto(linha)
+    analise = analyze_boleto(linha, beneficiario=payload.beneficiario or "")
 
     db.add(AnalysisLog(user_id=current_user.id))
     db.commit()
 
     analise["banco"] = identificar_banco(linha)
+    analise["used_this_month"] = used + 1
+    analise["remaining"] = max(current_user.monthly_limit - (used + 1), 0)
 
     return analise
 
@@ -233,8 +214,13 @@ def analisar(
 def analisar_pdf(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
+    used = get_current_month_usage(db, current_user.id)
+
+    if used >= current_user.monthly_limit:
+        raise HTTPException(status_code=403, detail="Limite atingido")
+
     parsed = extract_boleto_from_pdf(file.file)
     linha = parsed.get("linha_digitavel")
 
@@ -247,5 +233,7 @@ def analisar_pdf(
     db.commit()
 
     analise["banco"] = identificar_banco(linha)
+    analise["used_this_month"] = used + 1
+    analise["remaining"] = max(current_user.monthly_limit - (used + 1), 0)
 
     return analise

@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "dev-secret"
     DEBUG: bool = True
 
-    DATABASE_URL: str = "sqlite:///./database.db"
+    DATABASE_URL: str  # ← obrigatório (vem do Railway)
 
     SCORE_MAX: int = 100
     SCORE_ALERTA: int = 60

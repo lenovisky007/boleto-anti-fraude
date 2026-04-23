@@ -1,5 +1,5 @@
-from app.database.db import Base, engine
-from app.models import User  # importante: importa os models
+from app.database import Base, engine
+from app.models import User
 
 print("Criando tabelas no banco...")
 
