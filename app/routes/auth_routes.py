@@ -1,10 +1,9 @@
-from fastapi import APIRouter, Depends, Body, HTTPException
+from fastapi import APIRouter, Body, HTTPException
 from pydantic import BaseModel
 
 from app.auth import hash_password, verify_password, create_access_token
 from app.database.db import SessionLocal
 from app.models import User
-
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -39,15 +38,15 @@ def register(data: UserCreate = Body(...)):
         email=data.email,
         password=hash_password(data.password),
         plan="free",
-        requests_used=0
+        requests_used=0,
+        is_active=True
     )
 
     db.add(new_user)
     db.commit()
+    db.close()
 
-    return {
-        "msg": "Usuário criado com sucesso"
-    }
+    return {"msg": "Usuário criado com sucesso"}
 
 
 # =========================
@@ -64,15 +63,14 @@ def login(data: UserLogin = Body(...)):
         raise HTTPException(status_code=401, detail="Usuário não encontrado")
 
     if not verify_password(data.password, user.password):
-    raise HTTPException(status_code=401, detail="Senha inválida")
+        raise HTTPException(status_code=401, detail="Senha inválida")
 
-    token = create_access_token(
-        {
-            "sub": user.email,
-            "plan": user.plan
-        },
-        expires_minutes=60  # 🔥 importante
-    )
+    token = create_access_token({
+        "sub": user.email,
+        "plan": user.plan
+    })
+
+    db.close()
 
     return {
         "access_token": token,

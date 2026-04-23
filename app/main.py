@@ -7,7 +7,8 @@ from app.routes.auth_routes import router as auth_router
 from app.dependencies.auth_guard import get_current_user
 from app.risk import calculate_risk
 
-app = FastAPI(title="SaaS Antifraude")
+app = FastAPI(title="Painel admin")
+app.include_router(auth_router)
 
 # =========================
 # 🔥 CORS CORRIGIDO
