@@ -26,10 +26,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://boleto-anti-fraude.vercel.app",
-        "https://boleto-anti-fraude-e26yba44q-lenovisky007s-projects.vercel.app",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
+        "https://boleto-anti-fraude-1jc3eev87-lenovisky007s-projects.vercel.app",
     ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
