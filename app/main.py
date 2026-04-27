@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 import re
 
-from fastapi import FastAPI, HTTPException, Depends, Header
+from fastapi import FastAPI, HTTPException, Depends, Header, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -24,11 +24,22 @@ app = FastAPI(title="Boleto Antifraude")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://boleto-anti-fraude.vercel.app",
+        "https://boleto-anti-fraude-e26yba44q-lenovisky007s-projects.vercel.app",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.options("/{rest_of_path:path}")
+def options_handler(rest_of_path: str):
+    return Response(status_code=200)
+
 
 Base.metadata.create_all(bind=engine)
 
