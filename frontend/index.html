@@ -61,14 +61,11 @@
       border-radius: 10px;
       padding: 14px;
       min-height: 70px;
+      word-break: break-word;
     }
 
-    .ok { color: #4ade80; }
-    .error { color: #f87171; }
-
-    .risk-low { color: #4ade80; }
-    .risk-medium { color: #facc15; }
-    .risk-high { color: #f87171; }
+    .ok { color: #4ade80; font-weight: bold; }
+    .error { color: #f87171; font-weight: bold; }
 
     .hidden { display: none; }
   </style>
@@ -94,13 +91,13 @@
       <button class="secondary" onclick="login()">Entrar</button>
     </div>
 
-    <div id="authResult" class="result-box"></div>
+    <div id="authResult" class="result-box">Aguardando ação...</div>
   </div>
 
   <div id="appArea" class="hidden">
     <div class="section">
       <h2>Conta</h2>
-      <div id="meBox"></div>
+      <div id="meBox" class="result-box">Carregando...</div>
       <button class="danger" onclick="logout()">Sair</button>
     </div>
 
@@ -112,16 +109,13 @@
 
       <button onclick="analisar()">Analisar</button>
 
-      <input id="pdfFile" type="file" accept=".pdf">
-      <button onclick="analisarPdf()">Analisar PDF</button>
-
-      <div id="resultBox" class="result-box"></div>
+      <div id="resultBox" class="result-box">Aguardando análise...</div>
     </div>
   </div>
 </div>
 
 <script>
-const API_URL = "boletoantifraude-production.up.railway.app";
+const API_URL = "https://boleto-anti-fraude-production.up.railway.app";
 
 function getToken() {
   return localStorage.getItem("token");
@@ -131,8 +125,12 @@ function setToken(token) {
   localStorage.setItem("token", token);
 }
 
-function logout() {
+function removeToken() {
   localStorage.removeItem("token");
+}
+
+function logout() {
+  removeToken();
   location.reload();
 }
 
@@ -141,104 +139,185 @@ function showLoggedIn() {
   document.getElementById("appArea").classList.remove("hidden");
 }
 
-async function register() {
-  const res = await fetch(API_URL + "/register", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      name: registerName.value,
-      email: registerEmail.value,
-      password: registerPassword.value
-    })
-  });
+function showLoggedOut() {
+  document.getElementById("authArea").classList.remove("hidden");
+  document.getElementById("appArea").classList.add("hidden");
+}
 
-  const data = await res.json();
-  authResult.innerHTML = data.message || data.detail;
+async function safeJson(res) {
+  const text = await res.text();
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { detail: text || "Resposta inválida do servidor" };
+  }
+}
+
+async function register() {
+  const name = document.getElementById("registerName").value.trim();
+  const email = document.getElementById("registerEmail").value.trim();
+  const password = document.getElementById("registerPassword").value.trim();
+  const authResult = document.getElementById("authResult");
+
+  if (!name || !email || !password) {
+    authResult.innerHTML = '<span class="error">Preencha nome, email e senha.</span>';
+    return;
+  }
+
+  authResult.innerHTML = "Criando conta...";
+
+  try {
+    const res = await fetch(`${API_URL}/register`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ name, email, password })
+    });
+
+    const data = await safeJson(res);
+
+    if (!res.ok) {
+      throw new Error(data.detail || "Erro ao cadastrar.");
+    }
+
+    authResult.innerHTML = `<span class="ok">${data.message || "Usuário criado com sucesso."}</span>`;
+  } catch (error) {
+    authResult.innerHTML = `<span class="error">${error.message}</span>`;
+  }
 }
 
 async function login() {
-  const res = await fetch(API_URL + "/login", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      email: loginEmail.value,
-      password: loginPassword.value
-    })
-  });
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value.trim();
+  const authResult = document.getElementById("authResult");
 
-  const data = await res.json();
+  if (!email || !password) {
+    authResult.innerHTML = '<span class="error">Preencha email e senha.</span>';
+    return;
+  }
 
-  if (data.access_token) {
+  authResult.innerHTML = "Entrando...";
+
+  try {
+    const res = await fetch(`${API_URL}/login`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await safeJson(res);
+
+    if (!res.ok) {
+      throw new Error(data.detail || "Erro no login.");
+    }
+
+    if (!data.access_token) {
+      throw new Error("Token não recebido.");
+    }
+
     setToken(data.access_token);
+    authResult.innerHTML = `<span class="ok">Login realizado com sucesso.</span>`;
+
     showLoggedIn();
-    loadMe();
-  } else {
-    authResult.innerHTML = data.detail;
+    await loadMe();
+  } catch (error) {
+    authResult.innerHTML = `<span class="error">${error.message}</span>`;
   }
 }
 
 async function loadMe() {
-  const res = await fetch(API_URL + "/me", {
-    headers: {"Authorization": "Bearer " + getToken()}
-  });
+  const token = getToken();
 
-  const data = await res.json();
+  if (!token) {
+    showLoggedOut();
+    return;
+  }
 
-  meBox.innerHTML = `
-    Nome: ${data.name}<br>
-    Plano: ${data.plan}<br>
-    Uso: ${data.used_this_month}/${data.monthly_limit}
-  `;
+  try {
+    const res = await fetch(`${API_URL}/me`, {
+      headers: {
+        "Authorization": "Bearer " + token
+      }
+    });
+
+    const data = await safeJson(res);
+
+    if (!res.ok) {
+      throw new Error(data.detail || "Erro ao carregar conta.");
+    }
+
+    document.getElementById("meBox").innerHTML = `
+      Nome: ${data.name}<br>
+      Email: ${data.email}<br>
+      Plano: ${data.plan}<br>
+      Uso: ${data.used_this_month}/${data.monthly_limit}<br>
+      Restante: ${data.remaining}
+    `;
+  } catch (error) {
+    removeToken();
+    showLoggedOut();
+    document.getElementById("authResult").innerHTML = `<span class="error">${error.message}</span>`;
+  }
 }
 
 async function analisar() {
-  const res = await fetch(API_URL + "/analisar", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + getToken()
-    },
-    body: JSON.stringify({
-      linha_digitavel: linha.value,
-      beneficiario: beneficiario.value
-    })
-  });
+  const token = getToken();
+  const linha = document.getElementById("linha").value.trim();
+  const beneficiario = document.getElementById("beneficiario").value.trim();
+  const resultBox = document.getElementById("resultBox");
 
-  const data = await res.json();
+  if (!token) {
+    resultBox.innerHTML = '<span class="error">Você precisa estar logado.</span>';
+    return;
+  }
 
-  resultBox.innerHTML = `
-    Risco: ${data.risco}<br>
-    Score: ${data.score}<br>
-    Banco: ${data.banco_nome}<br>
-    Mensagem: ${data.mensagem}
-  `;
-}
+  if (!linha) {
+    resultBox.innerHTML = '<span class="error">Informe a linha digitável.</span>';
+    return;
+  }
 
-async function analisarPdf() {
-  const formData = new FormData();
-  formData.append("file", pdfFile.files[0]);
+  resultBox.innerHTML = "Analisando...";
 
-  const res = await fetch(API_URL + "/analisar-pdf", {
-    method: "POST",
-    headers: {
-      "Authorization": "Bearer " + getToken()
-    },
-    body: formData
-  });
+  try {
+    const res = await fetch(`${API_URL}/analisar`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify({
+        linha_digitavel: linha,
+        beneficiario: beneficiario
+      })
+    });
 
-  const data = await res.json();
+    const data = await safeJson(res);
 
-  resultBox.innerHTML = `
-    Risco: ${data.risco}<br>
-    Score: ${data.score}<br>
-    Banco: ${data.banco_nome}<br>
-    Mensagem: ${data.mensagem}
-  `;
+    if (!res.ok) {
+      throw new Error(data.detail || "Erro ao analisar.");
+    }
+
+    resultBox.innerHTML = `
+      <strong>Resultado</strong><br><br>
+      Risco: ${data.risco || "N/D"}<br>
+      Score: ${data.score ?? "N/D"}<br>
+      Banco: ${data.banco_nome || data.banco || "N/D"}<br>
+      Mensagem: ${data.mensagem || "N/D"}<br>
+      Usado no mês: ${data.used_this_month ?? "N/D"}<br>
+      Restante: ${data.remaining ?? "N/D"}
+    `;
+
+    await loadMe();
+  } catch (error) {
+    resultBox.innerHTML = `<span class="error">${error.message}</span>`;
+  }
 }
 
 if (getToken()) {
   showLoggedIn();
   loadMe();
+} else {
+  showLoggedOut();
 }
 </script>
 </body>
