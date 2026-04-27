@@ -1,3 +1,4 @@
+print(">>> CORS ATIVO <<<")
 from datetime import datetime
 from typing import Optional
 import re
@@ -38,6 +39,7 @@ app.add_middleware(
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    print(">>> Middleware carregado <<<")
 )
 
 
