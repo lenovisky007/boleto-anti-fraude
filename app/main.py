@@ -27,6 +27,7 @@ app = FastAPI(title="Boleto Antifraude")
 
 origins = [
     "https://boleto-anti-fraude.vercel.app",
+    "https://boleto-anti-fraude-26yba44q-lenovisky007s-projects.vercel.app",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
