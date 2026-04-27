@@ -1,9 +1,8 @@
-print(">>> CORS ATIVO <<<")
 from datetime import datetime
 from typing import Optional
 import re
 
-from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File, Response
+from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -18,20 +17,10 @@ from app.auth import (
     decode_access_token,
 )
 from app.risk import analyze_boleto
-
-
-# garante que os models sejam registrados antes do create_all
 from app import models  # noqa: F401
 
 
 app = FastAPI(title="Boleto Antifraude")
-
-origins = [
-    "https://boleto-anti-fraude.vercel.app",
-    "https://boleto-anti-fraude-26yba44q-lenovisky007s-projects.vercel.app",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
 
 app.add_middleware(
     CORSMiddleware,
@@ -39,9 +28,7 @@ app.add_middleware(
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
-    print(">>> Middleware carregado <<<")
 )
-
 
 Base.metadata.create_all(bind=engine)
 
@@ -83,7 +70,6 @@ def identificar_banco(linha: str) -> str:
         "341": "Itaú",
         "380": "PicPay",
     }
-
     codigo = linha[:3] if linha else ""
     return bancos.get(codigo, "Desconhecido")
 
@@ -102,8 +88,6 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Token inválido")
 
     user_id = payload.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Token inválido")
 
     user = db.query(User).filter(User.id == user_id).first()
 
@@ -117,13 +101,10 @@ def get_current_user(
 
 
 def get_current_month_usage(db: Session, user_id: int) -> int:
-    current_month = datetime.utcnow().month
-    current_year = datetime.utcnow().year
-
     return db.query(AnalysisLog).filter(
         AnalysisLog.user_id == user_id,
-        extract("month", AnalysisLog.created_at) == current_month,
-        extract("year", AnalysisLog.created_at) == current_year
+        extract("month", AnalysisLog.created_at) == datetime.utcnow().month,
+        extract("year", AnalysisLog.created_at) == datetime.utcnow().year,
     ).count()
 
 
@@ -156,13 +137,14 @@ def me(current_user: User = Depends(get_current_user), db: Session = Depends(get
 
 @app.post("/register")
 def register(payload: RegisterRequest, db: Session = Depends(get_db)):
-    existing = db.query(User).filter(User.email == payload.email).first()
-    if existing:
+    email = payload.email.strip().lower()
+
+    if db.query(User).filter(User.email == email).first():
         raise HTTPException(status_code=400, detail="Email já cadastrado")
 
     user = User(
         name=payload.name.strip(),
-        email=payload.email.strip().lower(),
+        email=email,
         password_hash=hash_password(payload.password),
         plan="free",
         monthly_limit=10,
@@ -179,7 +161,8 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
 
 @app.post("/login")
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == payload.email.strip().lower()).first()
+    email = payload.email.strip().lower()
+    user = db.query(User).filter(User.email == email).first()
 
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
