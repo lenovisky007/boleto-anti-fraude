@@ -17,7 +17,7 @@ from app.auth import (
     decode_access_token,
 )
 from app.risk import analyze_boleto
-from app.pdf_parser import extract_boleto_from_pdf
+
 
 # garante que os models sejam registrados antes do create_all
 from app import models  # noqa: F401
@@ -214,38 +214,6 @@ def analisar(
         raise HTTPException(status_code=400, detail="Linha digitável inválida")
 
     analise = analyze_boleto(linha, beneficiario=payload.beneficiario or "")
-
-    db.add(AnalysisLog(user_id=current_user.id))
-    db.commit()
-
-    analise["banco"] = identificar_banco(linha)
-    analise["used_this_month"] = used + 1
-    analise["remaining"] = max(current_user.monthly_limit - (used + 1), 0)
-
-    return analise
-
-
-@app.post("/analisar-pdf")
-def analisar_pdf(
-    file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    used = get_current_month_usage(db, current_user.id)
-
-    if used >= current_user.monthly_limit:
-        raise HTTPException(status_code=403, detail="Limite atingido")
-
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Envie um arquivo PDF válido")
-
-    parsed = extract_boleto_from_pdf(file.file)
-    linha = parsed.get("linha_digitavel")
-
-    if not linha:
-        raise HTTPException(status_code=400, detail="Linha não encontrada")
-
-    analise = analyze_boleto(linha)
 
     db.add(AnalysisLog(user_id=current_user.id))
     db.commit()
