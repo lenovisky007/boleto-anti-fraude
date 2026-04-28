@@ -4,112 +4,369 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Boleto Anti-Fraude</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 
   <style>
-    * { box-sizing: border-box; }
+    :root {
+      --bg: #04091f;
+      --surface: #0b1630;
+      --surface2: #0f1e3a;
+      --border: rgba(99,179,255,0.12);
+      --accent: #3b82f6;
+      --accent2: #06b6d4;
+      --green: #22d3a5;
+      --red: #f87171;
+      --text: #e2eaf8;
+      --muted: #64748b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #06153a;
-      color: white;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
       display: flex;
-      justify-content: center;
       align-items: center;
-      padding: 30px;
+      justify-content: center;
+      padding: 24px;
+      overflow-x: hidden;
     }
 
-    .container {
+    /* background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    /* glow */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .wrap {
       width: 100%;
-      max-width: 720px;
-      background: #1d2a44;
+      max-width: 480px;
+      position: relative;
+      z-index: 1;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    .logo-icon {
+      font-size: 40px;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .logo h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #fff;
+    }
+
+    .logo p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .tabs {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 20px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: 9px;
+      transition: all 0.2s;
+      border: none;
+      background: transparent;
+    }
+
+    .tab.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(59,130,246,0.35);
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
       border-radius: 16px;
       padding: 28px;
+      animation: fadeUp 0.5s ease both;
     }
 
-    h1 { text-align: center; }
-
-    .section {
-      background: #12203b;
-      border-radius: 12px;
-      padding: 18px;
-      margin-top: 18px;
+    .field {
+      margin-bottom: 14px;
     }
 
-    input, button {
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+
+    input {
       width: 100%;
-      padding: 12px;
-      border-radius: 8px;
-      margin-top: 10px;
+      padding: 12px 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus {
+      border-color: rgba(59,130,246,0.5);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+
+    input::placeholder { color: var(--muted); }
+
+    .btn {
+      width: 100%;
+      padding: 13px;
+      border-radius: 10px;
       border: none;
-    }
-
-    button {
-      background: #28c45c;
-      color: white;
-      font-weight: bold;
+      font-family: 'Syne', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
       cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 6px;
+      letter-spacing: 0.3px;
     }
 
-    .secondary { background: #2563eb; }
-    .danger { background: #dc2626; }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(59,130,246,0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 28px rgba(59,130,246,0.45);
+    }
+
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .msg {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid transparent;
+    }
+
+    .msg.idle { background: var(--surface2); color: var(--muted); border-color: var(--border); }
+    .msg.ok   { background: rgba(34,211,165,0.08); color: var(--green); border-color: rgba(34,211,165,0.2); }
+    .msg.err  { background: rgba(248,113,113,0.08); color: var(--red); border-color: rgba(248,113,113,0.2); }
+    .msg.loading { background: var(--surface2); color: var(--accent); border-color: var(--border); }
+
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(59,130,246,0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* APP AREA */
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .app-header h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .btn-logout {
+      background: transparent;
+      border: 1px solid rgba(248,113,113,0.3);
+      color: var(--red);
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+    }
+
+    .btn-logout:hover { background: rgba(248,113,113,0.1); }
+
+    .me-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      line-height: 1.9;
+      color: var(--text);
+    }
+
+    .me-box strong { color: var(--accent2); }
 
     .result-box {
-      margin-top: 15px;
-      background: #08142f;
-      border-radius: 10px;
-      padding: 14px;
-      min-height: 70px;
-      word-break: break-word;
+      margin-top: 16px;
+      padding: 16px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 2;
+      color: var(--text);
     }
 
-    .ok { color: #4ade80; font-weight: bold; }
-    .error { color: #f87171; font-weight: bold; }
+    .score-display {
+      font-family: 'Syne', sans-serif;
+      font-size: 42px;
+      font-weight: 800;
+      text-align: center;
+      margin: 8px 0;
+    }
+
+    .score-low  { color: var(--green); }
+    .score-mid  { color: #facc15; }
+    .score-high { color: var(--red); }
 
     .hidden { display: none; }
   </style>
 </head>
-
 <body>
-<div class="container">
-  <h1>Boleto Anti-Fraude</h1>
 
-  <div id="authArea">
-    <div class="section">
-      <h2>Criar conta</h2>
-      <input id="registerName" placeholder="Nome">
-      <input id="registerEmail" placeholder="Email">
-      <input id="registerPassword" type="password" placeholder="Senha">
-      <button onclick="register()">Cadastrar</button>
-    </div>
-
-    <div class="section">
-      <h2>Login</h2>
-      <input id="loginEmail" placeholder="Email">
-      <input id="loginPassword" type="password" placeholder="Senha">
-      <button class="secondary" onclick="login()">Entrar</button>
-    </div>
-
-    <div id="authResult" class="result-box">Aguardando ação...</div>
+<div class="wrap">
+  <div class="logo">
+    <span class="logo-icon">🛡️</span>
+    <h1>Boleto Anti-Fraude</h1>
+    <p>Análise inteligente de boletos bancários</p>
   </div>
 
-  <div id="appArea" class="hidden">
-    <div class="section">
-      <h2>Conta</h2>
-      <div id="meBox" class="result-box">Carregando...</div>
-      <button class="danger" onclick="logout()">Sair</button>
+  <!-- AUTH AREA -->
+  <div id="authArea">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('login')">Entrar</button>
+      <button class="tab" onclick="switchTab('register')">Criar conta</button>
     </div>
 
-    <div class="section">
-      <h2>Analisar boleto</h2>
+    <!-- LOGIN -->
+    <div class="card" id="loginCard">
+      <div class="field">
+        <label>Email</label>
+        <input id="loginEmail" type="email" placeholder="seu@email.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label>Senha</label>
+        <input id="loginPassword" type="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary" id="btnLogin" onclick="login()">Entrar</button>
+      <div class="msg idle" id="loginMsg">Aguardando...</div>
+    </div>
 
-      <input id="linha" placeholder="Linha digitável">
-      <input id="beneficiario" placeholder="Beneficiário">
+    <!-- REGISTRO -->
+    <div class="card hidden" id="registerCard">
+      <div class="field">
+        <label>Nome</label>
+        <input id="registerName" placeholder="Seu nome completo">
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input id="registerEmail" type="email" placeholder="seu@email.com">
+      </div>
+      <div class="field">
+        <label>Senha</label>
+        <input id="registerPassword" type="password" placeholder="Mínimo 6 caracteres">
+      </div>
+      <button class="btn btn-primary" id="btnRegister" onclick="register()">Criar conta</button>
+      <div class="msg idle" id="registerMsg">Preencha os campos acima.</div>
+    </div>
+  </div>
 
-      <button onclick="analisar()">Analisar</button>
+  <!-- APP AREA -->
+  <div id="appArea" class="hidden">
+    <div class="app-header">
+      <h2>🔎 Analisar Boleto</h2>
+      <button class="btn-logout" onclick="logout()">Sair</button>
+    </div>
 
-      <div id="resultBox" class="result-box">Aguardando análise...</div>
+    <div class="me-box" id="meBox">Carregando conta...</div>
+
+    <div class="card">
+      <div class="field">
+        <label>Linha digitável</label>
+        <input id="linha" placeholder="00190000090 01234567890 12345678901 1 12340000010000">
+      </div>
+      <div class="field">
+        <label>Beneficiário (opcional)</label>
+        <input id="beneficiario" placeholder="Nome da empresa ou pessoa">
+      </div>
+      <button class="btn btn-primary" id="btnAnalisar" onclick="analisar()">Analisar Boleto</button>
+
+      <div class="result-box hidden" id="resultBox"></div>
     </div>
   </div>
 </div>
@@ -117,208 +374,223 @@
 <script>
 const API_URL = "https://boleto-anti-fraude-production.up.railway.app";
 
-function getToken() {
-  return localStorage.getItem("token");
+/* ── UTILS ── */
+function getToken()        { return localStorage.getItem("token"); }
+function setToken(t)       { localStorage.setItem("token", t); }
+function removeToken()     { localStorage.removeItem("token"); }
+
+async function safeJson(res) {
+  const text = await res.text();
+  try { return JSON.parse(text); }
+  catch { return { detail: text || "Resposta inválida do servidor" }; }
 }
 
-function setToken(token) {
-  localStorage.setItem("token", token);
+function setMsg(id, text, type = "idle") {
+  const el = document.getElementById(id);
+  el.className = "msg " + type;
+  if (type === "loading") {
+    el.innerHTML = `<div class="spinner"></div> ${text}`;
+  } else {
+    const icon = type === "ok" ? "✓" : type === "err" ? "✕" : "·";
+    el.innerHTML = `<span>${icon}</span> ${text}`;
+  }
 }
 
-function removeToken() {
-  localStorage.removeItem("token");
+function setBtn(id, disabled, text) {
+  const b = document.getElementById(id);
+  b.disabled = disabled;
+  b.textContent = text;
 }
 
-function logout() {
-  removeToken();
-  location.reload();
+/* ── TABS ── */
+function switchTab(tab) {
+  const tabs = document.querySelectorAll(".tab");
+  tabs[0].classList.toggle("active", tab === "login");
+  tabs[1].classList.toggle("active", tab === "register");
+  document.getElementById("loginCard").classList.toggle("hidden", tab !== "login");
+  document.getElementById("registerCard").classList.toggle("hidden", tab !== "register");
 }
 
-function showLoggedIn() {
+/* ── VIEWS ── */
+function showLoggedIn()  {
   document.getElementById("authArea").classList.add("hidden");
   document.getElementById("appArea").classList.remove("hidden");
 }
-
 function showLoggedOut() {
   document.getElementById("authArea").classList.remove("hidden");
   document.getElementById("appArea").classList.add("hidden");
 }
 
-async function safeJson(res) {
-  const text = await res.text();
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { detail: text || "Resposta inválida do servidor" };
-  }
-}
-
+/* ── REGISTER ── */
 async function register() {
-  const name = document.getElementById("registerName").value.trim();
-  const email = document.getElementById("registerEmail").value.trim();
+  const name     = document.getElementById("registerName").value.trim();
+  const email    = document.getElementById("registerEmail").value.trim();
   const password = document.getElementById("registerPassword").value.trim();
-  const authResult = document.getElementById("authResult");
 
   if (!name || !email || !password) {
-    authResult.innerHTML = '<span class="error">Preencha nome, email e senha.</span>';
+    setMsg("registerMsg", "Preencha nome, email e senha.", "err");
     return;
   }
 
-  authResult.innerHTML = "Criando conta...";
+  setBtn("btnRegister", true, "Criando conta...");
+  setMsg("registerMsg", "Aguarde...", "loading");
 
   try {
-    const res = await fetch(`${API_URL}/register`, {
+    const res  = await fetch(`${API_URL}/register`, {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, email, password })
     });
 
     const data = await safeJson(res);
+    if (!res.ok) throw new Error(data.detail || "Erro ao cadastrar.");
 
-    if (!res.ok) {
-      throw new Error(data.detail || "Erro ao cadastrar.");
-    }
+    setMsg("registerMsg", data.message || "Conta criada! Faça login.", "ok");
+    setTimeout(() => switchTab("login"), 1500);
 
-    authResult.innerHTML = `<span class="ok">${data.message || "Usuário criado com sucesso."}</span>`;
-  } catch (error) {
-    authResult.innerHTML = `<span class="error">${error.message}</span>`;
+  } catch (e) {
+    setMsg("registerMsg", e.message, "err");
+  } finally {
+    setBtn("btnRegister", false, "Criar conta");
   }
 }
 
+/* ── LOGIN ──
+   FastAPI OAuth2PasswordRequestForm espera:
+   Content-Type: application/x-www-form-urlencoded
+   campos: username (= email) e password
+*/
 async function login() {
-  const email = document.getElementById("loginEmail").value.trim();
+  const email    = document.getElementById("loginEmail").value.trim();
   const password = document.getElementById("loginPassword").value.trim();
-  const authResult = document.getElementById("authResult");
 
   if (!email || !password) {
-    authResult.innerHTML = '<span class="error">Preencha email e senha.</span>';
+    setMsg("loginMsg", "Preencha email e senha.", "err");
     return;
   }
 
-  authResult.innerHTML = "Entrando...";
+  setBtn("btnLogin", true, "Entrando...");
+  setMsg("loginMsg", "Verificando credenciais...", "loading");
 
   try {
-    const res = await fetch(`${API_URL}/login`, {
+    const res  = await fetch(`${API_URL}/login`, {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password })
     });
 
     const data = await safeJson(res);
 
-    if (!res.ok) {
-      throw new Error(data.detail || "Erro no login.");
-    }
-
-    if (!data.access_token) {
-      throw new Error("Token não recebido.");
-    }
+    if (!res.ok) throw new Error(data.detail || "Credenciais inválidas.");
+    if (!data.access_token) throw new Error("Token não recebido.");
 
     setToken(data.access_token);
-    authResult.innerHTML = `<span class="ok">Login realizado com sucesso.</span>`;
+    setMsg("loginMsg", "Login realizado!", "ok");
 
-    showLoggedIn();
-    await loadMe();
-  } catch (error) {
-    authResult.innerHTML = `<span class="error">${error.message}</span>`;
+    setTimeout(async () => {
+      window.location.href = "dashboard.html";
+    }, 600);
+
+  } catch (e) {
+    setMsg("loginMsg", e.message, "err");
+  } finally {
+    setBtn("btnLogin", false, "Entrar");
   }
 }
 
+/* ── LOGOUT ── */
+function logout() {
+  removeToken();
+  showLoggedOut();
+}
+
+/* ── ME ── */
 async function loadMe() {
   const token = getToken();
+  if (!token) { showLoggedOut(); return; }
 
-  if (!token) {
-    showLoggedOut();
-    return;
-  }
+  const box = document.getElementById("meBox");
+  box.textContent = "Carregando...";
 
   try {
-    const res = await fetch(`${API_URL}/me`, {
-      headers: {
-        "Authorization": "Bearer " + token
-      }
+    const res  = await fetch(`${API_URL}/me`, {
+      headers: { Authorization: "Bearer " + token }
     });
-
     const data = await safeJson(res);
+    if (!res.ok) throw new Error(data.detail);
 
-    if (!res.ok) {
-      throw new Error(data.detail || "Erro ao carregar conta.");
-    }
-
-    document.getElementById("meBox").innerHTML = `
-      Nome: ${data.name}<br>
-      Email: ${data.email}<br>
-      Plano: ${data.plan}<br>
-      Uso: ${data.used_this_month}/${data.monthly_limit}<br>
-      Restante: ${data.remaining}
+    box.innerHTML = `
+      <strong>Nome:</strong> ${data.name}<br>
+      <strong>Email:</strong> ${data.email}<br>
+      <strong>Plano:</strong> ${data.plan}<br>
+      <strong>Uso no mês:</strong> ${data.used_this_month ?? 0} / ${data.monthly_limit}<br>
+      <strong>Restante:</strong> ${data.remaining ?? 0}
     `;
-  } catch (error) {
+  } catch (e) {
     removeToken();
     showLoggedOut();
-    document.getElementById("authResult").innerHTML = `<span class="error">${error.message}</span>`;
   }
 }
 
+/* ── ANALISAR ── */
 async function analisar() {
-  const token = getToken();
-  const linha = document.getElementById("linha").value.trim();
+  const token      = getToken();
+  const linha      = document.getElementById("linha").value.trim();
   const beneficiario = document.getElementById("beneficiario").value.trim();
-  const resultBox = document.getElementById("resultBox");
-
-  if (!token) {
-    resultBox.innerHTML = '<span class="error">Você precisa estar logado.</span>';
-    return;
-  }
+  const resultBox  = document.getElementById("resultBox");
 
   if (!linha) {
-    resultBox.innerHTML = '<span class="error">Informe a linha digitável.</span>';
+    resultBox.classList.remove("hidden");
+    resultBox.innerHTML = '<span style="color:var(--red)">Informe a linha digitável.</span>';
     return;
   }
 
-  resultBox.innerHTML = "Analisando...";
+  setBtn("btnAnalisar", true, "Analisando...");
+  resultBox.classList.remove("hidden");
+  resultBox.innerHTML = '<div style="display:flex;gap:8px;align-items:center"><div class="spinner"></div> Processando boleto...</div>';
 
   try {
-    const res = await fetch(`${API_URL}/analisar`, {
+    const res  = await fetch(`${API_URL}/analisar`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "Bearer " + token
+        Authorization: "Bearer " + token
       },
-      body: JSON.stringify({
-        linha_digitavel: linha,
-        beneficiario: beneficiario
-      })
+      body: JSON.stringify({ linha_digitavel: linha, beneficiario })
     });
 
     const data = await safeJson(res);
+    if (!res.ok) throw new Error(data.detail || "Erro ao analisar.");
 
-    if (!res.ok) {
-      throw new Error(data.detail || "Erro ao analisar.");
-    }
+    const score = data.score ?? 0;
+    const cls   = score <= 25 ? "score-low" : score <= 55 ? "score-mid" : "score-high";
+    const emoji = score <= 25 ? "🟢" : score <= 55 ? "🟡" : "🔴";
 
     resultBox.innerHTML = `
-      <strong>Resultado</strong><br><br>
-      Risco: ${data.risco || "N/D"}<br>
-      Score: ${data.score ?? "N/D"}<br>
-      Banco: ${data.banco_nome || data.banco || "N/D"}<br>
-      Mensagem: ${data.mensagem || "N/D"}<br>
-      Usado no mês: ${data.used_this_month ?? "N/D"}<br>
-      Restante: ${data.remaining ?? "N/D"}
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-size:32px">${emoji}</div>
+        <div class="score-display ${cls}">${score}</div>
+        <div style="font-size:13px;color:var(--muted)">${data.risco || "—"}</div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:12px;line-height:2">
+        <strong>Banco:</strong> ${data.banco_nome || data.banco || "N/D"}<br>
+        <strong>Mensagem:</strong> ${data.mensagem || "N/D"}<br>
+        <strong>Usado no mês:</strong> ${data.used_this_month ?? "N/D"}<br>
+        <strong>Restante:</strong> ${data.remaining ?? "N/D"}
+      </div>
     `;
 
     await loadMe();
-  } catch (error) {
-    resultBox.innerHTML = `<span class="error">${error.message}</span>`;
+  } catch (e) {
+    resultBox.innerHTML = `<span style="color:var(--red)">✕ ${e.message}</span>`;
+  } finally {
+    setBtn("btnAnalisar", false, "Analisar Boleto");
   }
 }
 
-if (getToken()) {
-  showLoggedIn();
-  loadMe();
-} else {
-  showLoggedOut();
-}
+/* ── INIT ── */
+if (getToken()) { showLoggedIn(); loadMe(); }
+else { showLoggedOut(); }
 </script>
 </body>
 </html>
