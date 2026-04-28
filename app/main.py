@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import extract
 
 from app.database import SessionLocal, engine, Base
-from app.models import User, AnalysisLog
+from app.models import User, AnalysisLog, TrustedEntity
 from app.auth import (
     hash_password,
     verify_password,
@@ -57,6 +57,22 @@ class LoginRequest(BaseModel):
 class AnalyzeRequest(BaseModel):
     linha_digitavel: str
     beneficiario: Optional[str] = ""
+
+
+class AdminChangePlanRequest(BaseModel):
+    email: str
+    plan: str
+    monthly_limit: int
+
+
+class AdminToggleUserStatusRequest(BaseModel):
+    email: str
+    is_active: bool
+
+
+class TrustedEntityCreateRequest(BaseModel):
+    name: str
+    type: str
 
 
 def get_db():
@@ -108,6 +124,11 @@ def get_current_user(
         raise HTTPException(status_code=403, detail="Conta desativada")
 
     return user
+
+def get_admin_user(current_user: User = Depends(get_current_user)):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Acesso restrito ao administrador")
+    return current_user
 
 
 def get_current_month_usage(db: Session, user_id: int) -> int:
@@ -214,3 +235,182 @@ def analisar(
     analise["remaining"] = max(current_user.monthly_limit - (used + 1), 0)
 
     return analise
+
+@app.get("/admin/users")
+def admin_list_users(
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    users = db.query(User).all()
+    result = []
+
+    for user in users:
+        used = get_current_month_usage(db, user.id)
+
+        result.append({
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "plan": user.plan,
+            "monthly_limit": user.monthly_limit,
+            "used_this_month": used,
+            "remaining": max(user.monthly_limit - used, 0),
+            "is_admin": user.is_admin,
+            "is_active": user.is_active,
+        })
+
+    return result
+
+
+@app.get("/admin/user-by-email")
+def admin_get_user_by_email(
+    email: str,
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.email == email.strip().lower()).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    used = get_current_month_usage(db, user.id)
+
+    return {
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "plan": user.plan,
+        "monthly_limit": user.monthly_limit,
+        "used_this_month": used,
+        "remaining": max(user.monthly_limit - used, 0),
+        "is_admin": user.is_admin,
+        "is_active": user.is_active,
+    }
+
+
+@app.post("/admin/change-plan")
+def admin_change_plan(
+    payload: AdminChangePlanRequest,
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.email == payload.email.strip().lower()).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    user.plan = payload.plan.strip()
+    user.monthly_limit = payload.monthly_limit
+
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "message": "Plano atualizado com sucesso",
+        "user": {
+            "email": user.email,
+            "plan": user.plan,
+            "monthly_limit": user.monthly_limit,
+        }
+    }
+
+
+@app.post("/admin/toggle-user-status")
+def admin_toggle_user_status(
+    payload: AdminToggleUserStatusRequest,
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.email == payload.email.strip().lower()).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    user.is_active = bool(payload.is_active)
+
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "message": "Status atualizado com sucesso",
+        "user": {
+            "email": user.email,
+            "is_active": user.is_active,
+        }
+    }
+
+
+@app.get("/admin/entities")
+def admin_list_entities(
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    entities = db.query(TrustedEntity).order_by(TrustedEntity.id.desc()).all()
+
+    return [
+        {
+            "id": e.id,
+            "name": e.name,
+            "type": e.type,
+            "created_at": e.created_at.isoformat() if e.created_at else None,
+        }
+        for e in entities
+    ]
+
+
+@app.post("/admin/entities")
+def admin_add_entity(
+    payload: TrustedEntityCreateRequest,
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    allowed_types = {"beneficiario", "keyword", "org_code", "suspicious_term"}
+
+    entity_type = payload.type.strip().lower()
+    name = payload.name.strip().lower()
+
+    if entity_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Tipo inválido")
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Nome inválido")
+
+    existing = db.query(TrustedEntity).filter(
+        TrustedEntity.name == name,
+        TrustedEntity.type == entity_type
+    ).first()
+
+    if existing:
+        raise HTTPException(status_code=400, detail="Entidade já cadastrada")
+
+    entity = TrustedEntity(name=name, type=entity_type)
+
+    db.add(entity)
+    db.commit()
+    db.refresh(entity)
+
+    return {
+        "message": "Entidade adicionada com sucesso",
+        "entity": {
+            "id": entity.id,
+            "name": entity.name,
+            "type": entity.type,
+        }
+    }
+
+
+@app.delete("/admin/entities/{entity_id}")
+def admin_delete_entity(
+    entity_id: int,
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    entity = db.query(TrustedEntity).filter(TrustedEntity.id == entity_id).first()
+
+    if not entity:
+        raise HTTPException(status_code=404, detail="Entidade não encontrada")
+
+    db.delete(entity)
+    db.commit()
+
+    return {"message": "Entidade removida com sucesso"}
