@@ -66,14 +66,6 @@ class TrustedEntity(Base):
 
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
-class TrustedEntity(Base):
-    __tablename__ = "trusted_entities"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False, index=True)
-    type = Column(String, nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
 
 # ============================================================
 # RESULTADOS DAS ANÁLISES
